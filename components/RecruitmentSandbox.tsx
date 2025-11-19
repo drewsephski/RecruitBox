@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { generateRecruitmentAssets } from '../services/geminiService';
 import { RecruitmentResult, GenerationConfig, SavedTemplate } from '../types';
@@ -116,6 +115,22 @@ const EXAMPLE_TEMPLATES: SavedTemplate[] = [
   }
 ];
 
+const encodeState = (data: any) => {
+    try {
+        return btoa(unescape(encodeURIComponent(JSON.stringify(data))));
+    } catch (e) {
+        return "";
+    }
+};
+
+const decodeState = (str: string) => {
+    try {
+        return JSON.parse(decodeURIComponent(escape(window.atob(str))));
+    } catch (e) {
+        return null;
+    }
+};
+
 const RecruitmentSandbox: React.FC = () => {
   const { isPro, openPaywall } = useUser();
   const [notes, setNotes] = useState('');
@@ -130,8 +145,15 @@ const RecruitmentSandbox: React.FC = () => {
   const [selectedTemplateId, setSelectedTemplateId] = useState<string>('');
   const [isNamingTemplate, setIsNamingTemplate] = useState(false);
   const [templateName, setTemplateName] = useState('');
+  
+  // Sharing State
+  const [isShareModalOpen, setIsShareModalOpen] = useState(false);
+  const [shareLink, setShareLink] = useState('');
+  const [linkCopied, setLinkCopied] = useState(false);
 
+  // Initialize and Check URL Params
   useEffect(() => {
+    // 1. Load Saved Assets
     const saved = localStorage.getItem('recruitbox_templates');
     if (saved) {
       try {
@@ -145,11 +167,24 @@ const RecruitmentSandbox: React.FC = () => {
       } catch (e) {
         console.error("Failed to load templates", e);
         setTemplates(EXAMPLE_TEMPLATES);
-        localStorage.setItem('recruitbox_templates', JSON.stringify(EXAMPLE_TEMPLATES));
       }
     } else {
       setTemplates(EXAMPLE_TEMPLATES);
       localStorage.setItem('recruitbox_templates', JSON.stringify(EXAMPLE_TEMPLATES));
+    }
+
+    // 2. Check for Shared Link
+    const params = new URLSearchParams(window.location.search);
+    const shareData = params.get('share');
+    if (shareData) {
+        const decoded = decodeState(shareData);
+        if (decoded && decoded.result) {
+            setNotes(decoded.notes || '');
+            setConfig(decoded.config || { tone: 'corporate', seniority: 'mid' });
+            setResult(decoded.result);
+            // Optional: Clean URL without reloading
+            window.history.replaceState({}, '', window.location.pathname);
+        }
     }
   }, []);
 
@@ -187,7 +222,7 @@ const RecruitmentSandbox: React.FC = () => {
       timestamp: Date.now()
     };
 
-    const updatedTemplates = [...templates, newTemplate];
+    const updatedTemplates = [newTemplate, ...templates];
     setTemplates(updatedTemplates);
     localStorage.setItem('recruitbox_templates', JSON.stringify(updatedTemplates));
     
@@ -198,7 +233,6 @@ const RecruitmentSandbox: React.FC = () => {
 
   const handleLoadTemplate = (id: string) => {
     if (!id) {
-      // Reset to default state
       setSelectedTemplateId('');
       setNotes('');
       setResult(null);
@@ -228,6 +262,28 @@ const RecruitmentSandbox: React.FC = () => {
     navigator.clipboard.writeText(textToCopy);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
+  };
+
+  const handleShare = () => {
+      if (!isPro) {
+          openPaywall();
+          return;
+      }
+      if (!result) return;
+
+      const payload = { notes, config, result };
+      const encoded = encodeState(payload);
+      const url = `${window.location.origin}${window.location.pathname}?share=${encoded}`;
+      
+      setShareLink(url);
+      setIsShareModalOpen(true);
+      setLinkCopied(false);
+  };
+
+  const copyShareLink = () => {
+      navigator.clipboard.writeText(shareLink);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2000);
   };
 
   // Generate fake line numbers based on content
@@ -283,7 +339,16 @@ const RecruitmentSandbox: React.FC = () => {
              
              {result && !isNamingTemplate && (
                <div className="flex items-center gap-2">
-                 <Tooltip content="Save current output as template">
+                 <Tooltip content="Shareable read-only link">
+                    <button 
+                        onClick={handleShare}
+                        className="h-8 w-8 flex items-center justify-center rounded hover:bg-white/5 text-neutral-400 hover:text-white transition-colors border border-transparent hover:border-white/10"
+                    >
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8.684 13.342C8.886 12.938 9 12.482 9 12c0-.482-.114-.938-.316-1.342m0 2.684a3 3 0 110-2.684m0 2.684l6.632 3.316m-6.632-6l6.632-3.316m0 0a3 3 0 105.367-2.684 3 3 0 00-5.367 2.684zm0 9.316a3 3 0 105.368 2.684 3 3 0 00-5.368-2.684z" /></svg>
+                    </button>
+                 </Tooltip>
+
+                 <Tooltip content="Save as new version">
                     <button 
                       onClick={() => setIsNamingTemplate(true)}
                       className="h-8 w-8 flex items-center justify-center rounded hover:bg-white/5 text-neutral-400 hover:text-white transition-colors border border-transparent hover:border-white/10"
@@ -302,7 +367,7 @@ const RecruitmentSandbox: React.FC = () => {
                  <input 
                     autoFocus
                     type="text" 
-                    placeholder="Template Name..." 
+                    placeholder="Version Name..." 
                     value={templateName}
                     onChange={(e) => setTemplateName(e.target.value)}
                     className="h-8 bg-[#050505] border border-white/10 rounded px-3 text-xs text-white focus:outline-none focus:border-sky-500/50 w-32 md:w-40"
@@ -315,6 +380,34 @@ const RecruitmentSandbox: React.FC = () => {
         </div>
       </div>
 
+      {/* Share Modal */}
+      {isShareModalOpen && (
+          <div className="absolute inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-slide-up">
+             <div className="w-full max-w-md bg-[#0F0F0F] border border-white/10 rounded-xl shadow-2xl p-6">
+                 <div className="flex justify-between items-center mb-4">
+                     <h3 className="text-white font-medium">Share Asset</h3>
+                     <button onClick={() => setIsShareModalOpen(false)} className="text-neutral-500 hover:text-white">
+                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+                     </button>
+                 </div>
+                 <p className="text-sm text-neutral-400 mb-4">
+                     Anyone with this link can view this Job Description and Interview Guide. The link contains all asset data.
+                 </p>
+                 <div className="flex gap-2">
+                     <input 
+                        type="text" 
+                        readOnly 
+                        value={shareLink} 
+                        className="flex-1 bg-black border border-white/10 rounded px-3 py-2 text-xs text-neutral-300 font-mono focus:outline-none"
+                     />
+                     <Button onClick={copyShareLink} size="sm" className={linkCopied ? "bg-green-600 text-white border-green-600" : ""}>
+                        {linkCopied ? "Copied" : "Copy"}
+                     </Button>
+                 </div>
+             </div>
+          </div>
+      )}
+
       <div className="flex flex-col lg:flex-row flex-1 overflow-hidden">
         {/* Sidebar (Inputs) */}
         <div className="w-full lg:w-[35%] h-[450px] lg:h-auto border-b lg:border-b-0 lg:border-r border-white/5 bg-[#050505] flex flex-col relative transition-all duration-300 z-10 order-1 lg:order-1">
@@ -323,7 +416,7 @@ const RecruitmentSandbox: React.FC = () => {
            <div className="p-4 border-b border-white/5 flex flex-col gap-4 relative z-20 bg-[#050505]">
               <div className="w-full">
                 <Select 
-                  label="Template Library"
+                  label="Saved Assets Library"
                   value={selectedTemplateId}
                   options={templateOptions}
                   onChange={handleLoadTemplate}
@@ -447,7 +540,7 @@ const RecruitmentSandbox: React.FC = () => {
                     </div>
                     <h3 className="text-lg font-medium text-white mb-2">Awaiting Context</h3>
                     <p className="text-xs font-mono text-neutral-500 uppercase tracking-widest max-w-xs text-center leading-relaxed">
-                        Input your rough notes or load a template to generate comprehensive recruitment assets.
+                        Input your rough notes or load a saved asset to generate comprehensive recruitment packs.
                     </p>
                  </div>
               )}
@@ -583,7 +676,7 @@ const RecruitmentSandbox: React.FC = () => {
                </div>
                <div className="flex gap-4">
                    <span className="hidden sm:inline">Output: Structured JSON</span>
-                   <span>{selectedTemplateId ? 'Template Loaded' : 'Unsaved Session'}</span>
+                   <span>{selectedTemplateId ? 'Saved Version Loaded' : 'Unsaved Session'}</span>
                </div>
            </div>
         </div>

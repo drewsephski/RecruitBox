@@ -14,7 +14,7 @@ const Footer: React.FC = () => {
              </div>
              <p className="leading-relaxed mb-6">
                 Pioneering the future of automated recruitment. 
-                <br/>© 2024 RecruitBox Inc. All rights reserved.
+                <br/>© 2025 RecruitBox Inc. All rights reserved.
              </p>
              
              <button 
