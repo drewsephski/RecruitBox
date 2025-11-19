@@ -7,6 +7,115 @@ import { Select } from './ui/Select';
 import { Tooltip } from './ui/Tooltip';
 import { useUser } from '../contexts/UserContext';
 
+const EXAMPLE_TEMPLATES: SavedTemplate[] = [
+  {
+    id: 'template_ex_1',
+    name: 'Example: Sr. React Engineer',
+    notes: "Role: Senior Frontend Engineer\nStack: React, TypeScript, Tailwind\nExperience: 5+ years\nFocus: Design Systems, Performance, Accessibility\nVibe: High-growth startup, fast-paced.",
+    config: { tone: 'startup', seniority: 'senior' },
+    timestamp: Date.now(),
+    result: {
+      jobDescription: {
+        title: "Senior Frontend Engineer",
+        summary: "We are looking for a battle-tested Frontend Engineer to lead our Design System architecture. You will work at the intersection of design and engineering, building the foundational components that power our entire product suite.",
+        responsibilities: [
+            "Architect and maintain a multi-brand design system using React, TypeScript, and Tailwind CSS.",
+            "Collaborate with product designers to define API contracts for UI components.",
+            "Optimize application performance, ensuring 90+ Lighthouse scores.",
+            "Mentor junior engineers on accessibility (WCAG 2.1) and modern CSS patterns."
+        ],
+        requirements: [
+            "5+ years of experience with modern JavaScript ecosystems.",
+            "Deep understanding of React internals (hooks, context, reconciliation).",
+            "Experience building component libraries in a team environment.",
+            "Strong opinion on testing strategies (Jest, Cypress, Playwright)."
+        ],
+        benefits: [
+            "Competitive Equity Package",
+            "Remote-First Culture",
+            "Home Office Stipend",
+            "Annual Retreats"
+        ]
+      },
+      interviewGuide: [
+        {
+            question: "Describe a time you had to refactor a legacy component. How did you ensure no regressions?",
+            competency: "Technical Execution",
+            evaluationCriteria: "Look for mentions of testing strategies, incremental migration, and feature flags."
+        },
+        {
+            question: "How do you approach state management in a complex application?",
+            competency: "System Design",
+            evaluationCriteria: "Should discuss trade-offs between local state, context, and server state (e.g., React Query)."
+        }
+      ],
+      screeningQuestions: [
+        {
+            question: "How many years of React experience do you have?",
+            idealAnswerKeywords: ["5+", "5 years", "Senior"]
+        },
+        {
+            question: "Have you worked with Tailwind CSS in production?",
+            idealAnswerKeywords: ["Yes", "Production", "Config"]
+        }
+      ]
+    }
+  },
+  {
+    id: 'template_ex_2',
+    name: 'Example: Product Marketing Mgr',
+    notes: "Role: Product Marketing Manager\nFocus: B2B SaaS, Go-to-Market\nKey Skills: Positioning, Sales Enablement, Copywriting\nExperience: 3-5 years",
+    config: { tone: 'corporate', seniority: 'mid' },
+    timestamp: Date.now(),
+    result: {
+      jobDescription: {
+        title: "Product Marketing Manager",
+        summary: "We are seeking a strategic Product Marketing Manager to drive the go-to-market strategy for our enterprise SaaS solutions. You will craft compelling messaging, enable our sales team, and orchestrate product launches.",
+        responsibilities: [
+            "Develop clear, differentiated positioning and messaging for new products.",
+            "Create high-impact sales enablement assets (decks, one-pagers, battle cards).",
+            "Lead cross-functional GTM teams for feature launches.",
+            "Conduct competitive analysis and market research."
+        ],
+        requirements: [
+            "3+ years of Product Marketing experience in B2B SaaS.",
+            "Exceptional copywriting and storytelling skills.",
+            "Proven ability to translate technical features into business value.",
+            "Experience working closely with Sales and Product teams."
+        ],
+        benefits: [
+            "Comprehensive Health Coverage",
+            "401(k) Matching",
+            "Professional Development Budget",
+            "Hybrid Work Model"
+        ]
+      },
+      interviewGuide: [
+         {
+            question: "Walk me through a product launch you managed. What went well and what didn't?",
+            competency: "Project Management",
+            evaluationCriteria: "Look for cross-functional coordination, metric tracking, and lessons learned."
+         },
+         {
+            question: "How do you handle a situation where Sales disagrees with your messaging?",
+            competency: "Stakeholder Management",
+            evaluationCriteria: "Assess ability to listen, use data to support decisions, and find common ground."
+         }
+      ],
+      screeningQuestions: [
+        {
+            question: "Do you have experience with B2B Enterprise SaaS?",
+            idealAnswerKeywords: ["Yes", "Enterprise", "B2B"]
+        },
+        {
+            question: "Share a link to a piece of content you wrote.",
+            idealAnswerKeywords: ["Portfolio", "Link", "Writing"]
+        }
+      ]
+    }
+  }
+];
+
 const RecruitmentSandbox: React.FC = () => {
   const { isPro, openPaywall } = useUser();
   const [notes, setNotes] = useState('');
@@ -26,10 +135,21 @@ const RecruitmentSandbox: React.FC = () => {
     const saved = localStorage.getItem('recruitbox_templates');
     if (saved) {
       try {
-        setTemplates(JSON.parse(saved));
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setTemplates(parsed);
+        } else {
+          setTemplates(EXAMPLE_TEMPLATES);
+          localStorage.setItem('recruitbox_templates', JSON.stringify(EXAMPLE_TEMPLATES));
+        }
       } catch (e) {
         console.error("Failed to load templates", e);
+        setTemplates(EXAMPLE_TEMPLATES);
+        localStorage.setItem('recruitbox_templates', JSON.stringify(EXAMPLE_TEMPLATES));
       }
+    } else {
+      setTemplates(EXAMPLE_TEMPLATES);
+      localStorage.setItem('recruitbox_templates', JSON.stringify(EXAMPLE_TEMPLATES));
     }
   }, []);
 
