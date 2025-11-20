@@ -41,9 +41,18 @@ app.use('/*', cors({
     allowHeaders: ['Content-Type', 'Authorization', 'webhook-signature', 'webhook-id', 'webhook-timestamp'],
 }))
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-const WEBHOOK_SIGNATURE_LOG = path.join(__dirname, 'webhook-signatures.log')
+// Handle path resolution for both development and production
+let WEBHOOK_SIGNATURE_LOG: string;
+
+if (process.env.NETLIFY) {
+  // In Netlify environment, use /tmp for writeable storage
+  WEBHOOK_SIGNATURE_LOG = '/tmp/webhook-signatures.log';
+} else {
+  // In development, use the local file system
+  const __filename = fileURLToPath(import.meta.url);
+  const __dirname = path.dirname(__filename);
+  WEBHOOK_SIGNATURE_LOG = path.join(__dirname, 'webhook-signatures.log');
+}
 
 const PLAN_TIERS = ['starter', 'agency'] as const
 type PlanTier = typeof PLAN_TIERS[number]

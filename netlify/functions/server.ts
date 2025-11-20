@@ -1,6 +1,7 @@
 /// <reference types="bun-types" />
 import type { Handler } from '@netlify/functions';
 import { app } from '../../server';
+import path from 'node:path';
 
 // Set up environment for Netlify Functions
 if (process.env.NETLIFY) {
@@ -10,6 +11,11 @@ if (process.env.NETLIFY) {
   
   // Disable file-based configuration for Polar SDK
   process.env.POLAR_DISABLE_FILE_CONFIG = "true";
+  
+  // Set up path resolution for production
+  if (!process.env.PRODUCTION) {
+    process.env.PRODUCTION = 'true';
+  }
 }
 
 // For local development with Bun
@@ -51,59 +57,40 @@ export const handler: Handler = async (event) => {
       }
     });
 
-    // Handle path resolution for Netlify Functions
-    let path = event.path || '';
-    
-    // Remove /api prefix if present
-    path = path.replace(/^\/api/, '');
-    if (!path.startsWith('/')) {
-      path = `/${path}`;
-    }
-    
-    // Create URL with query parameters
-    const url = new URL(path, 'http://localhost');
-    if (event.queryStringParameters) {
-      Object.entries(event.queryStringParameters).forEach(([key, value]) => {
-        if (value !== undefined) {
-          url.searchParams.append(key, value as string);
-        }
-      });
-    }
+    // Create a new URL with the correct path
+    const url = new URL(
+      event.rawUrl || 
+      `https://${event.headers.host || ''}${event.path || ''}${event.queryStringParameters ? `?${new URLSearchParams(event.queryStringParameters as Record<string, string>).toString()}` : ''}`
+    );
 
-    // Create request with proper body handling
+    // Create a new request object
     const request = new Request(url.toString(), {
       method: event.httpMethod,
       headers,
-      body: event.body && event.isBase64Encoded 
-        ? Buffer.from(event.body, 'base64').toString('utf-8')
-        : (event.body || null),
+      body: event.body ? 
+        (event.isBase64Encoded ? Buffer.from(event.body, 'base64') : event.body) : 
+        null,
     });
 
-    // Handle the request with Hono
+    // Handle the request with the Hono app
     const response = await app.fetch(request);
-    
-    // Convert Hono response to Netlify response
-    const responseBody = await response.text();
-    const responseHeaders: Record<string, string> = {};
-    response.headers.forEach((value, key) => {
-      // Skip content-encoding header as Netlify handles this
-      if (key.toLowerCase() !== 'content-encoding') {
-        responseHeaders[key] = value;
-      }
-    });
 
+    // Convert the response to the format expected by Netlify
+    const responseBody = await response.text();
+    
     return {
       statusCode: response.status,
-      headers: responseHeaders,
+      headers: Object.fromEntries(response.headers.entries()),
       body: responseBody,
     };
   } catch (error) {
     console.error('Error in Netlify function:', error);
     return {
       statusCode: 500,
-      body: JSON.stringify({
+      body: JSON.stringify({ 
         error: 'Internal Server Error',
-        message: error instanceof Error ? error.message : 'Unknown error occurred',
+        message: error instanceof Error ? error.message : 'Unknown error',
+        stack: process.env.NODE_ENV === 'development' && error instanceof Error ? error.stack : undefined
       }),
       headers: {
         'Content-Type': 'application/json',
