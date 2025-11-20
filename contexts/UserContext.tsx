@@ -51,7 +51,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
             name: user.fullName,
           }),
         }),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('User sync timeout')), 5000)),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('User sync timeout')), 15000)),
       ]) as Response;
 
       if (!syncResponse.ok) {
@@ -88,7 +88,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       console.log('UserContext: Checking subscription status...');
       const res = await Promise.race([
         fetch(`/api/subscription/${user.id}`),
-        new Promise((_, reject) => setTimeout(() => reject(new Error('Subscription check timeout')), 5000)),
+        new Promise((_, reject) => setTimeout(() => reject(new Error('Subscription check timeout')), 15000)),
       ]) as Response;
 
       if (res.ok) {
@@ -174,6 +174,9 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       console.log('[Checkout] Response status:', response.status);
 
       if (!response.ok) {
+        if (response.status === 504) {
+          throw new Error('Server timed out. Please try again.');
+        }
         const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
         console.error('[Checkout] API error:', errorData);
 

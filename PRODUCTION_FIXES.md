@@ -33,6 +33,23 @@
 **Files Modified**:
 - `server/index.ts` - Enhanced CORS and checkout endpoint
 
+### 3. ✅ User Sync & Checkout Timeouts
+**Problem**: "User sync timeout" and "Subscription check timeout" errors in console, followed by 504 Gateway Timeout during checkout.
+
+**Root Causes**:
+1. **Aggressive Client Timeouts**: The frontend had a hardcoded 5-second timeout for backend operations, which is too short for Vercel cold starts (serverless functions waking up).
+2. **SQLite on Vercel**: The project is configured with SQLite, which is **incompatible** with Vercel's read-only, ephemeral filesystem, causing hangs and errors.
+3. **Unhandled 504 Errors**: The checkout flow didn't gracefully handle server timeouts.
+
+**Solutions**:
+1. **Increased Timeouts**: Updated `UserContext.tsx` to wait 15 seconds (up from 5s) for sync and subscription checks.
+2. **Better Error Handling**: Added specific handling for 504 Gateway Timeouts to prompt the user to retry.
+3. **Database Migration Guide**: Created `MIGRATION_GUIDE.md` to help migrate from SQLite to PostgreSQL (Required for Vercel).
+
+**Files Modified**:
+- `contexts/UserContext.tsx` - Increased timeouts and improved error handling
+- `MIGRATION_GUIDE.md` - Created migration instructions
+
 ## Deployment Checklist
 
 ### Before Deploying
