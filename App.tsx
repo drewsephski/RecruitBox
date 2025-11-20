@@ -1,6 +1,4 @@
 import React, { useState, useRef, useEffect } from 'react';
-// @ts-ignore
-import Scrollbar from 'smooth-scrollbar';
 import ChatDrawer from './components/ChatDrawer';
 import FeaturesSection from './components/FeaturesSection';
 import PricingSection from './components/PricingSection';
@@ -85,20 +83,43 @@ const AuthenticatedApp: React.FC = () => {
   const [showCheckoutSuccess, setShowCheckoutSuccess] = useState(false);
 
   useEffect(() => {
-    if (scrollContainerRef.current) {
-      const sb = Scrollbar.init(scrollContainerRef.current, {
-        damping: 0.08,
-        renderByPixels: true,
-        continuousScrolling: true,
-        alwaysShowTracks: false,
-      });
+    let sb: any = null;
 
-      setScrollbar(sb);
+    const initScrollbar = async () => {
+      if (!scrollContainerRef.current) return;
 
-      return () => {
-        if (sb) sb.destroy();
-      };
-    }
+      try {
+        // Try to dynamically import smooth-scrollbar
+        const SmoothScrollbar = (await import('smooth-scrollbar')).default;
+
+        sb = SmoothScrollbar.init(scrollContainerRef.current, {
+          damping: 0.08,
+          renderByPixels: true,
+          continuousScrolling: true,
+          alwaysShowTracks: false,
+        });
+
+        setScrollbar(sb);
+      } catch (error) {
+        console.warn('smooth-scrollbar not available, using native scroll:', error);
+        // Fallback to native scrolling
+        if (scrollContainerRef.current) {
+          scrollContainerRef.current.style.overflow = 'auto';
+        }
+      }
+    };
+
+    initScrollbar();
+
+    return () => {
+      if (sb) {
+        try {
+          sb.destroy();
+        } catch (e) {
+          console.warn('Error destroying scrollbar:', e);
+        }
+      }
+    };
   }, []);
 
   useEffect(() => {
@@ -123,15 +144,20 @@ const AuthenticatedApp: React.FC = () => {
 
   const scrollToSection = (e: React.MouseEvent<HTMLElement> | React.TouchEvent<HTMLElement>, id: string) => {
     e.preventDefault();
-    if (!scrollbar) return;
 
     const target = document.querySelector(id);
-    if (target) {
+    if (!target) return;
+
+    if (scrollbar) {
+      // Use smooth-scrollbar if available
       scrollbar.scrollIntoView(target, {
         offsetTop: -80, // Offset for header
         duration: 1000,
         easing: (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t, // easeInOutQuad
       });
+    } else {
+      // Fallback to native smooth scroll
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }
   };
 
@@ -151,7 +177,7 @@ const AuthenticatedApp: React.FC = () => {
       <PaywallModal />
 
       {/* SCROLLABLE CONTENT */}
-      <div ref={scrollContainerRef} className="h-full w-full overflow-hidden" id="main-scroll-wrapper">
+      <div ref={scrollContainerRef} className="h-full w-full" style={{ overflow: scrollbar ? 'hidden' : 'auto' }} id="main-scroll-wrapper">
         <div className="min-h-screen flex flex-col">
           {showCheckoutSuccess && <CheckoutSuccessSection onDismiss={dismissSuccess} />}
           <HeroSection scrollToSection={scrollToSection} />

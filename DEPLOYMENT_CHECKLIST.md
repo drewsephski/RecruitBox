@@ -2,8 +2,11 @@
 
 Use this checklist before deploying to Vercel.
 
+> **⚠️ IMPORTANT**: If you're experiencing scrolling issues or checkout problems in production, see [PRODUCTION_FIXES.md](./PRODUCTION_FIXES.md) for detailed solutions.
+
 ## ✅ Pre-Deployment
 
+- [ ] Run production readiness test: `./test-production.sh`
 - [ ] All changes committed and pushed to GitHub
 - [ ] `.env` file is NOT committed (check `.gitignore`)
 - [ ] All dependencies are in `package.json`
@@ -106,10 +109,16 @@ vercel --prod
 
 Test these in order:
 
+0. **Environment Check**
+   - [ ] Visit `https://your-app.vercel.app/api/health`
+   - [ ] Verify all environment variables show as configured
+   - [ ] Check that `hasPolarToken: true` and products are configured
+
 1. **Frontend Loads**
    - [ ] Visit `https://your-app.vercel.app`
    - [ ] No console errors
    - [ ] Styling looks correct
+   - [ ] Page is scrollable (test with mouse wheel and scrollbar)
 
 2. **API Health Check**
    - [ ] Visit `https://your-app.vercel.app/api/`

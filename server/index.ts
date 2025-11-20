@@ -12,10 +12,32 @@ import { PolarError } from '@polar-sh/sdk/models/errors/polarerror.js'
 
 config()
 
-// Create and export the Hono app
 export const app = new Hono()
 
-app.use('/*', cors())
+// Configure CORS for production
+const allowedOrigins = [
+    'http://localhost:3000',
+    'http://localhost:5173',
+    process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '',
+    process.env.PRODUCTION_URL || '',
+].filter(Boolean)
+
+app.use('/*', cors({
+    origin: (origin) => {
+        // Allow requests with no origin (like mobile apps or curl requests)
+        if (!origin) return '*'
+
+        // Check if origin is in allowed list or is a vercel deployment
+        if (allowedOrigins.includes(origin) || origin.endsWith('.vercel.app')) {
+            return origin
+        }
+
+        return allowedOrigins[0] || '*'
+    },
+    credentials: true,
+    allowMethods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+    allowHeaders: ['Content-Type', 'Authorization', 'webhook-signature', 'webhook-id', 'webhook-timestamp'],
+}))
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -130,6 +152,31 @@ app.get('/', (c) => {
     return c.text('RecruitBox API is running!')
 })
 
+// Health check endpoint for debugging production issues
+app.get('/api/health', (c) => {
+    const health = {
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        environment: {
+            nodeEnv: process.env.NODE_ENV || 'development',
+            hasDatabase: !!process.env.DATABASE_URL,
+            hasClerkPublic: !!process.env.VITE_CLERK_PUBLISHABLE_KEY,
+            hasClerkSecret: !!process.env.CLERK_SECRET_KEY,
+            hasPolarToken: !!process.env.POLAR_ACCESS_TOKEN,
+            hasPolarWebhookSecret: !!process.env.POLAR_WEBHOOK_SECRET,
+            hasStarterProduct: !!process.env.POLAR_STARTER_PRODUCT_ID,
+            hasAgencyProduct: !!process.env.POLAR_AGENCY_PRODUCT_ID,
+            hasGeminiKey: !!process.env.GEMINI_API_KEY,
+        },
+        products: {
+            starter: process.env.POLAR_STARTER_PRODUCT_ID ? 'configured' : 'missing',
+            agency: process.env.POLAR_AGENCY_PRODUCT_ID ? 'configured' : 'missing',
+        }
+    }
+
+    return c.json(health)
+})
+
 // Get user subscription status
 app.get('/api/subscription/:clerkId', async (c) => {
     const clerkId = c.req.param('clerkId')
@@ -166,47 +213,66 @@ app.post('/api/users', async (c) => {
 // Create Polar Checkout Session
 app.post('/api/checkout', async (c) => {
     const { tier = 'agency', email, clerkId } = await c.req.json()
-    console.log('Received /api/checkout request:', { tier, email, clerkId });
+    console.log('[Checkout] Received request:', { tier, email, clerkId, timestamp: new Date().toISOString() });
 
     if (!email || !clerkId) {
-        console.error('Missing required fields for checkout:', { email, clerkId });
+        console.error('[Checkout] Missing required fields:', { email: !!email, clerkId: !!clerkId });
         return c.json({ error: 'Missing required fields' }, 400)
     }
 
-    // Check if user already has an active subscription
-    const user = await prisma.user.findUnique({
-        where: { clerkId },
-        include: { subscription: true }
-    })
+    // Validate Polar configuration
+    if (!process.env.POLAR_ACCESS_TOKEN) {
+        console.error('[Checkout] POLAR_ACCESS_TOKEN not configured');
+        return c.json({ error: 'Payment system not configured', detail: 'Missing access token' }, 500)
+    }
 
-    if (user?.subscription?.status === 'active') {
-        return c.json({
-            error: 'User already has an active subscription',
-            code: 'ALREADY_SUBSCRIBED'
-        }, 400)
+    // Check if user already has an active subscription
+    try {
+        const user = await prisma.user.findUnique({
+            where: { clerkId },
+            include: { subscription: true }
+        })
+
+        if (user?.subscription?.status === 'active') {
+            console.log('[Checkout] User already has active subscription:', { clerkId });
+            return c.json({
+                error: 'User already has an active subscription',
+                code: 'ALREADY_SUBSCRIBED'
+            }, 400)
+        }
+    } catch (dbError) {
+        console.error('[Checkout] Database error checking subscription:', dbError);
+        // Continue anyway - don't block checkout on DB issues
     }
 
     const resolvedTier: PlanTier = typeof tier === 'string' && isPlanTier(tier) ? tier : 'agency'
     const tierConfig = PRODUCT_CONFIG[resolvedTier]
     const productId = tierConfig?.productId
 
-    console.log('Resolved tier config:', { resolvedTier, tierConfig, productId });
-    console.log('Environment variables for products:', {
-        POLAR_STARTER_PRODUCT_ID: process.env.POLAR_STARTER_PRODUCT_ID,
-        POLAR_STARTER_PRICE_IDS: process.env.POLAR_STARTER_PRICE_IDS,
-        POLAR_AGENCY_PRODUCT_ID: process.env.POLAR_AGENCY_PRODUCT_ID,
-        POLAR_AGENCY_PRICE_IDS: process.env.POLAR_AGENCY_PRICE_IDS,
+    console.log('[Checkout] Resolved tier config:', {
+        resolvedTier,
+        productId,
+        hasProductId: !!productId,
+        envVars: {
+            POLAR_STARTER_PRODUCT_ID: !!process.env.POLAR_STARTER_PRODUCT_ID,
+            POLAR_AGENCY_PRODUCT_ID: !!process.env.POLAR_AGENCY_PRODUCT_ID,
+        }
     });
 
     if (!productId) {
-        console.error(`No product configured for tier ${resolvedTier}`);
-        return c.json({ error: `No product configured for tier ${resolvedTier}` }, 400)
+        console.error(`[Checkout] No product configured for tier ${resolvedTier}`);
+        return c.json({
+            error: `No product configured for tier ${resolvedTier}`,
+            detail: 'Please contact support'
+        }, 400)
     }
 
     try {
         // Create checkout session using Polar SDK
-        const origin = c.req.header('origin') || 'http://localhost:3000'
-        const checkout = await polar.checkouts.create({
+        const origin = c.req.header('origin') || c.req.header('referer')?.split('/').slice(0, 3).join('/') || 'http://localhost:3000'
+        console.log('[Checkout] Using origin:', origin);
+
+        const checkoutParams = {
             products: [productId],
             customerEmail: email,
             externalCustomerId: clerkId,
@@ -220,16 +286,42 @@ app.post('/api/checkout', async (c) => {
                 clerkId,
                 tier: resolvedTier,
             },
-        })
+        };
+
+        console.log('[Checkout] Creating checkout with params:', {
+            ...checkoutParams,
+            products: checkoutParams.products,
+            customerEmail: checkoutParams.customerEmail,
+        });
+
+        const checkout = await polar.checkouts.create(checkoutParams)
+
+        console.log('[Checkout] Successfully created checkout:', {
+            checkoutId: checkout.id,
+            url: checkout.url
+        });
 
         return c.json({ url: checkout.url })
     } catch (error) {
-        console.error('Failed to create checkout via Polar SDK', error)
+        console.error('[Checkout] Failed to create checkout via Polar SDK:', {
+            error,
+            message: error instanceof Error ? error.message : 'Unknown error',
+            stack: error instanceof Error ? error.stack : undefined,
+        });
+
         if (error instanceof Error) {
-            return c.json({ error: 'Failed to create checkout session', detail: error.message }, 500)
+            return c.json({
+                error: 'Failed to create checkout session',
+                detail: error.message,
+                timestamp: new Date().toISOString()
+            }, 500)
         }
 
-        return c.json({ error: 'Failed to create checkout session', detail: 'Unknown error' }, 500)
+        return c.json({
+            error: 'Failed to create checkout session',
+            detail: 'Unknown error',
+            timestamp: new Date().toISOString()
+        }, 500)
     }
 })
 
