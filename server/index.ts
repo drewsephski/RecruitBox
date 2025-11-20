@@ -1,5 +1,6 @@
 import { serve } from '@hono/node-server'
 import { Hono } from 'hono'
+import type { Context } from 'hono'
 import { cors } from 'hono/cors'
 import { config } from 'dotenv'
 import prisma from './prisma.js'
@@ -50,6 +51,22 @@ type PlanTier = typeof PLAN_TIERS[number]
 const isPlanTier = (value: string): value is PlanTier =>
     PLAN_TIERS.includes(value as PlanTier)
 
+const resolvePolarEnvironment = (): 'sandbox' | 'production' =>
+    process.env.POLAR_ENVIRONMENT === 'sandbox' ? 'sandbox' : 'production'
+
+const requiredPolarEnvVars = ['POLAR_ACCESS_TOKEN', 'POLAR_STARTER_PRODUCT_ID', 'POLAR_AGENCY_PRODUCT_ID'] as const
+const missingPolarEnvVars = requiredPolarEnvVars.filter((key) => !process.env[key])
+
+if (missingPolarEnvVars.length > 0) {
+    console.warn('[Config] Missing Polar environment variables:', missingPolarEnvVars)
+}
+
+const polarAccessToken = process.env.POLAR_ACCESS_TOKEN
+
+if (!polarAccessToken) {
+    throw new Error('POLAR_ACCESS_TOKEN is not configured. Unable to start API server.')
+}
+
 const PRODUCT_CONFIG: Record<PlanTier, { productId?: string }> = {
     starter: {
         productId: process.env.POLAR_STARTER_PRODUCT_ID,
@@ -62,26 +79,47 @@ const PRODUCT_CONFIG: Record<PlanTier, { productId?: string }> = {
 const CHECKOUT_FAILURE_STATUSES = new Set(['failed', 'expired', 'canceled'])
 
 const polar = new Polar({
-    accessToken: process.env.POLAR_ACCESS_TOKEN || '',
-    server: 'production',
+    accessToken: polarAccessToken,
+    server: resolvePolarEnvironment(),
 })
 
+const resolveRequestOrigin = (c: Context): string => {
+    const headerOrigin = c.req.header('origin')
+    if (headerOrigin) return headerOrigin
+
+    try {
+        return new URL(c.req.url).origin
+    } catch (error) {
+        console.warn('[Request] Failed to resolve URL origin, falling back to PRODUCTION_URL', error)
+        return process.env.PRODUCTION_URL || allowedOrigins[0] || 'http://localhost:3000'
+    }
+}
+
 app.post('/api/customer-portal/session', async (c) => {
-    const { clerkId } = await c.req.json()
+    const { clerkId, email: requestEmail, name: requestName } = await c.req.json()
 
     if (!clerkId) {
         return c.json({ error: 'Missing clerkId' }, 400)
     }
 
-    const origin = c.req.header('origin') || 'http://localhost:3000'
+    const origin = resolveRequestOrigin(c)
 
-    const user = await prisma.user.findUnique({
-        where: { clerkId }
-    })
+    let user: { email: string; name: string | null; clerkId: string } | null = null
 
-    if (!user) {
-        console.warn('No local user found for portal request', { clerkId })
-        return c.json({ error: 'User account not found' }, 404)
+    try {
+        user = await prisma.user.findUnique({
+            where: { clerkId }
+        })
+    } catch (error) {
+        console.error('[CustomerPortal] Failed to query user from database, continuing with request payload', error)
+    }
+
+    const resolvedEmail = user?.email ?? requestEmail
+    const resolvedName = user?.name ?? requestName
+
+    if (!resolvedEmail) {
+        console.warn('[CustomerPortal] Email missing for portal session provisioning', { clerkId })
+        return c.json({ error: 'Email is required to open the billing portal' }, 400)
     }
 
     const createPortalSession = async () =>
@@ -93,11 +131,11 @@ app.post('/api/customer-portal/session', async (c) => {
     const provisionPolarCustomer = async () => {
         try {
             await polar.customers.create({
-                email: user.email,
+                email: resolvedEmail,
                 externalId: clerkId,
-                name: user.name ?? undefined,
+                name: resolvedName ?? undefined,
                 metadata: {
-                    clerkId: user.clerkId,
+                    clerkId,
                 },
             })
         } catch (error) {

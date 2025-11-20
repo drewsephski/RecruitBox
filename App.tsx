@@ -78,6 +78,7 @@ const AuthenticatedApp: React.FC = () => {
   const { openPaywall, isPro, refreshSubscription, openCustomerPortal } = useUser();
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const [scrollbar, setScrollbar] = useState<any>(null);
+  const [scrollMode, setScrollMode] = useState<'smooth' | 'native'>('native');
   const location = useLocation();
   const navigate = useNavigate();
   const [showCheckoutSuccess, setShowCheckoutSuccess] = useState(false);
@@ -100,12 +101,13 @@ const AuthenticatedApp: React.FC = () => {
         });
 
         setScrollbar(sb);
+        setScrollMode('smooth');
+        console.log('smooth-scrollbar initialized successfully');
       } catch (error) {
         console.warn('smooth-scrollbar not available, using native scroll:', error);
-        // Fallback to native scrolling
-        if (scrollContainerRef.current) {
-          scrollContainerRef.current.style.overflow = 'auto';
-        }
+        // Ensure native scrolling is enabled
+        setScrollbar(null);
+        setScrollMode('native');
       }
     };
 
@@ -115,6 +117,7 @@ const AuthenticatedApp: React.FC = () => {
       if (sb) {
         try {
           sb.destroy();
+          setScrollMode('native');
         } catch (e) {
           console.warn('Error destroying scrollbar:', e);
         }
@@ -148,21 +151,32 @@ const AuthenticatedApp: React.FC = () => {
     const target = document.querySelector(id);
     if (!target) return;
 
+    const headerOffset = 80;
+
     if (scrollbar) {
       // Use smooth-scrollbar if available
       scrollbar.scrollIntoView(target, {
-        offsetTop: -80, // Offset for header
+        offsetTop: -headerOffset, // Offset for header
         duration: 1000,
         easing: (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t, // easeInOutQuad
       });
     } else {
       // Fallback to native smooth scroll
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      const elementPosition = target.getBoundingClientRect().top + window.scrollY;
+      const offsetPosition = Math.max(elementPosition - headerOffset, 0);
+
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
     }
   };
 
+  const isSmoothScrollActive = scrollMode === 'smooth';
+  const rootClassName = `${isSmoothScrollActive ? 'h-screen w-screen overflow-hidden' : 'min-h-screen w-full overflow-x-hidden'} bg-[#050505] text-white font-sans selection:bg-sky-500/30 selection:text-sky-200`;
+
   return (
-    <div className="h-screen w-screen overflow-hidden bg-[#050505] text-white font-sans selection:bg-sky-500/30 selection:text-sky-200">
+    <div className={rootClassName}>
       <div className="bg-noise" />
       {/* FIXED ELEMENTS (Outside Scroll Container) */}
       <Navbar
@@ -177,7 +191,16 @@ const AuthenticatedApp: React.FC = () => {
       <PaywallModal />
 
       {/* SCROLLABLE CONTENT */}
-      <div ref={scrollContainerRef} className="h-full w-full" style={{ overflow: scrollbar ? 'hidden' : 'auto' }} id="main-scroll-wrapper">
+      <div
+        ref={scrollContainerRef}
+        className="relative w-full"
+        style={{
+          height: isSmoothScrollActive ? '100%' : 'auto',
+          minHeight: isSmoothScrollActive ? undefined : '100vh',
+          overflow: isSmoothScrollActive ? 'hidden' : 'visible'
+        }}
+        id="main-scroll-wrapper"
+      >
         <div className="min-h-screen flex flex-col">
           {showCheckoutSuccess && <CheckoutSuccessSection onDismiss={dismissSuccess} />}
           <HeroSection scrollToSection={scrollToSection} />
