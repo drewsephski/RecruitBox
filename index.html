@@ -1,152 +1,151 @@
 <!DOCTYPE html>
 <html lang="en" class="dark">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>RecruitBox | Intelligent Workflows</title>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script>
-      tailwind.config = {
-        darkMode: 'class',
-        theme: {
-          extend: {
-            fontFamily: {
-              sans: ['Inter', 'system-ui', 'sans-serif'],
-              mono: ['JetBrains Mono', 'monospace'],
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RecruitBox | Intelligent Workflows</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link
+    href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=JetBrains+Mono:wght@400;500&display=swap"
+    rel="stylesheet">
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['Inter', 'system-ui', 'sans-serif'],
+            mono: ['JetBrains Mono', 'monospace'],
+          },
+          colors: {
+            background: '#050505',
+            surface: '#0f0f0f',
+            surfaceHighlight: '#1a1a1a',
+            border: '#262626',
+            neutral: {
+              850: '#1f1f1f',
+              900: '#171717',
+              950: '#0a0a0a',
             },
-            colors: {
-              background: '#050505',
-              surface: '#0f0f0f',
-              surfaceHighlight: '#1a1a1a',
-              border: '#262626',
-              neutral: {
-                850: '#1f1f1f',
-                900: '#171717',
-                950: '#0a0a0a',
-              },
-              sky: {
-                400: '#38bdf8',
-                500: '#0ea5e9',
-                600: '#0284c7',
-                900: '#0c4a6e',
-              }
-            },
-            animation: {
-              'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
-              'slide-up': 'slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
-              'slide-in': 'slideIn 0.3s ease-out forwards',
-              'shimmer': 'shimmer 2s linear infinite',
-              'scan': 'scan 4s linear infinite',
-              'radar': 'radar 4s linear infinite',
-              'graph-scroll': 'graph-scroll 2s linear infinite',
-            },
-            keyframes: {
-              slideUp: {
-                '0%': { transform: 'translateY(40px)', opacity: '0' },
-                '100%': { transform: 'translateY(0)', opacity: '1' },
-              },
-              slideIn: {
-                 '0%': { transform: 'translateX(100%)' },
-                 '100%': { transform: 'translateX(0)' }
-              },
-              shimmer: {
-                '0%': { transform: 'translateX(-100%)' },
-                '100%': { transform: 'translateX(100%)' }
-              },
-              scan: {
-                '0%': { transform: 'translateY(-100%)' },
-                '100%': { transform: 'translateY(500%)' }
-              },
-              radar: {
-                '0%': { transform: 'rotate(0deg)' },
-                '100%': { transform: 'rotate(360deg)' }
-              },
-              'graph-scroll': {
-                '0%': { transform: 'translateX(0)' },
-                '100%': { transform: 'translateX(-50%)' }
-              }
+            sky: {
+              400: '#38bdf8',
+              500: '#0ea5e9',
+              600: '#0284c7',
+              900: '#0c4a6e',
             }
           },
+          animation: {
+            'pulse-slow': 'pulse 4s cubic-bezier(0.4, 0, 0.6, 1) infinite',
+            'slide-up': 'slideUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards',
+            'slide-in': 'slideIn 0.3s ease-out forwards',
+            'shimmer': 'shimmer 2s linear infinite',
+            'scan': 'scan 4s linear infinite',
+            'radar': 'radar 4s linear infinite',
+            'graph-scroll': 'graph-scroll 2s linear infinite',
+          },
+          keyframes: {
+            slideUp: {
+              '0%': { transform: 'translateY(40px)', opacity: '0' },
+              '100%': { transform: 'translateY(0)', opacity: '1' },
+            },
+            slideIn: {
+              '0%': { transform: 'translateX(100%)' },
+              '100%': { transform: 'translateX(0)' }
+            },
+            shimmer: {
+              '0%': { transform: 'translateX(-100%)' },
+              '100%': { transform: 'translateX(100%)' }
+            },
+            scan: {
+              '0%': { transform: 'translateY(-100%)' },
+              '100%': { transform: 'translateY(500%)' }
+            },
+            radar: {
+              '0%': { transform: 'rotate(0deg)' },
+              '100%': { transform: 'rotate(360deg)' }
+            },
+            'graph-scroll': {
+              '0%': { transform: 'translateX(0)' },
+              '100%': { transform: 'translateX(-50%)' }
+            }
+          }
         },
-      };
-    </script>
-    <style>
-      html, body {
-        width: 100%;
-        height: 100%;
-        margin: 0;
-        padding: 0;
-        overflow: hidden; /* Essential for smooth-scrollbar */
-      }
+      },
+    };
+  </script>
+  <style>
+    html {
+      scroll-behavior: smooth;
+      overflow-x: hidden;
+      overflow-y: auto;
+    }
 
-      body {
-        background-color: #050505;
-        color: #e5e5e5;
-        -webkit-font-smoothing: antialiased;
-      }
-      
-      /* Global Noise Overlay */
-      .bg-noise {
-        position: fixed;
-        top: 0;
-        left: 0;
-        width: 100%;
-        height: 100%;
-        pointer-events: none;
-        z-index: 40;
-        opacity: 0.05;
-        background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
-      }
+    html,
+    body {
+      width: 100%;
+      height: 100%;
+      margin: 0;
+      padding: 0;
+      /* Essential for smooth-scrollbar */
+    }
 
-      /* Smooth Scrollbar Styling */
-      .scrollbar-track {
-        background: transparent !important;
-        width: 6px !important;
-        z-index: 9999 !important;
-      }
-      
-      .scrollbar-thumb {
-        background: #333 !important;
-        border-radius: 3px !important;
-      }
-      
-      .scrollbar-thumb:hover {
-        background: #555 !important;
-      }
-      
-      /* Utilities */
-      .glass-panel {
-        background: rgba(10, 10, 10, 0.6);
-        backdrop-filter: blur(12px);
-        border: 1px solid rgba(255, 255, 255, 0.08);
-      }
-      
-      .perspective-1000 {
-        perspective: 1000px;
-      }
-      
-      .preserve-3d {
-        transform-style: preserve-3d;
-      }
-    </style>
-  <script type="importmap">
-{
-  "imports": {
-    "react": "https://aistudiocdn.com/react@^19.2.0",
-    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
-    "react/": "https://aistudiocdn.com/react@^19.2.0/",
-    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.30.0",
-    "react-dom": "https://aistudiocdn.com/react-dom@^19.2.0",
-    "smooth-scrollbar": "https://cdn.jsdelivr.net/npm/smooth-scrollbar@8.8.4/+esm"
-  }
-}
-</script>
+    body {
+      -webkit-font-smoothing: antialiased;
+      overflow-x: hidden;
+    }
+
+    /* Global Noise Overlay */
+    .bg-noise {
+      position: fixed;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      pointer-events: none;
+      z-index: 9999;
+      opacity: 0.05;
+      background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.8' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E");
+    }
+
+    /* Smooth Scrollbar Styling */
+    .scrollbar-track {
+      background: transparent !important;
+      width: 6px !important;
+      z-index: 9999 !important;
+    }
+
+    .scrollbar-thumb {
+      background: #333 !important;
+      border-radius: 3px !important;
+    }
+
+    .scrollbar-thumb:hover {
+      background: #555 !important;
+    }
+
+    /* Utilities */
+    .glass-panel {
+      background: rgba(10, 10, 10, 0.6);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+    }
+
+    .perspective-1000 {
+      perspective: 1000px;
+    }
+
+    .preserve-3d {
+      transform-style: preserve-3d;
+    }
+  </style>
 </head>
-  <body>
-    <div class="bg-noise"></div>
-    <div id="root"></div>
-  </body>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/index.tsx"></script>
+</body>
+
 </html>

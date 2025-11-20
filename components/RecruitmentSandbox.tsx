@@ -479,11 +479,11 @@ const RecruitmentSandbox: React.FC = () => {
                      isLoading={loading} 
                      disabled={!notes.trim()} 
                      size="sm"
-                     className={`relative overflow-hidden group shadow-[0_0_25px_-5px_rgba(14,165,233,0.5)] hover:shadow-[0_0_40px_-10px_rgba(14,165,233,0.8)] border border-sky-400/30 bg-gradient-to-r from-sky-600 via-sky-500 to-sky-600 bg-[length:200%_100%] hover:bg-[position:100%_0] transition-all duration-500 text-white font-bold font-mono text-[10px] uppercase tracking-widest px-6 md:px-8 h-9 ${!isPro ? 'opacity-90' : ''}`}
+                     className={`relative overflow-hidden group shadow-[0_0_25px_-5px_rgba(14,165,233,0.5)] hover:shadow-[0_0_40px_-10px_rgba(14,165,233,0.8)] cursor-pointer border border-sky-400/30 bg-size-[200%_100%] hover:bg-[position:100%_0] transition-all duration-500 text-white font-bold font-mono text-[10px] uppercase tracking-widest px-4 md:px-6 h-9 ${!isPro ? 'opacity-90' : ''}`}
                    >
                       <span className="relative z-10 flex items-center gap-2 whitespace-nowrap">
                         {isPro ? 'Generate' : 'Generate (Pro)'}
-                        {!loading && <svg className="w-3 h-3 text-sky-200 group-hover:text-white group-hover:translate-x-0.5 transition-all duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>}
+                        {!loading && <svg className="size-4 text-sky-400 group-hover:text-blue-400 group-hover:translate-x-0.5 transition-all duration-300" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>}
                       </span>
                       <div className="absolute inset-0 -translate-x-full group-hover:animate-[shimmer_1s_infinite] bg-gradient-to-r from-transparent via-white/20 to-transparent z-0 pointer-events-none"></div>
                    </Button>

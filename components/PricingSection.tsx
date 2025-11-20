@@ -1,21 +1,26 @@
 
 import React from 'react';
 import { Button } from './ui/Button';
+import { useUser } from '../contexts/UserContext';
 
-const PricingCard = ({ 
-    tier, 
-    price, 
-    description, 
-    features, 
-    highlight = false 
-}: { 
-    tier: string, 
-    price: string, 
-    description: string, 
-    features: string[], 
-    highlight?: boolean 
+const PricingCard = ({
+    tier,
+    price,
+    description,
+    features,
+    highlight = false,
+    onClick,
+    buttonText
+}: {
+    tier: string,
+    price: string,
+    description: string,
+    features: string[],
+    highlight?: boolean,
+    onClick?: () => void,
+    buttonText?: string
 }) => (
-    <div className={`relative p-6 md:p-8 rounded-2xl border flex flex-col h-full transition-transform hover:-translate-y-1 ${highlight ? 'bg-[#0A0A0A] border-sky-500/30 shadow-[0_0_40px_-10px_rgba(14,165,233,0.15)]' : 'bg-[#050505] border-white/5'}`}>
+    <div className={`relative p-6 md:p-8 rounded-2xl border flex flex-col h-full transition-all duration-500 ease-[cubic-bezier(0.25,0.1,0.25,1)] hover:-translate-y-0.5 ${highlight ? 'bg-[#0A0A0A] border-sky-500/30 shadow-[0_0_40px_-10px_rgba(14,165,233,0.15)] hover:shadow-[0_0_60px_-5px_rgba(14,165,233,0.2)] hover:border-sky-500/50' : 'bg-[#050505] border-white/5 hover:border-white/10 hover:shadow-2xl hover:shadow-black/50'}`}>
         {highlight && (
             <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-sky-500 text-black text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-wider">
                 Most Popular
@@ -29,7 +34,7 @@ const PricingCard = ({
             </div>
             <p className="text-sm text-neutral-400">{description}</p>
         </div>
-        
+
         <div className="flex-1 mb-8 space-y-4">
             {features.map((feat, i) => (
                 <div key={i} className="flex items-start gap-3 text-sm text-neutral-300">
@@ -41,16 +46,19 @@ const PricingCard = ({
             ))}
         </div>
 
-        <Button 
-            variant={highlight ? 'primary' : 'secondary'} 
+        <Button
+            variant={highlight ? 'primary' : 'secondary'}
             className="w-full"
+            onClick={onClick}
         >
-            {highlight ? 'Start Free Trial' : 'Contact Sales'}
+            {buttonText || (highlight ? 'Start Free Trial' : 'Contact Sales')}
         </Button>
     </div>
 );
 
 const PricingSection = () => {
+    const { upgradeToPro, isPro, openCustomerPortal } = useUser();
+
     return (
         <section className="py-20 md:py-32 bg-[#050505] border-t border-white/5 relative z-20">
             <div className="max-w-screen-xl mx-auto px-4 md:px-6">
@@ -62,10 +70,12 @@ const PricingSection = () => {
                 </div>
 
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-6 max-w-5xl mx-auto">
-                    <PricingCard 
+                    <PricingCard
                         tier="Starter"
                         price="$49"
                         description="For individual recruiters and small startups."
+                        onClick={() => isPro ? openCustomerPortal() : upgradeToPro('starter')}
+                        buttonText={isPro ? "Current Plan" : "Get Started"}
                         features={[
                             "Unlimited Job Descriptions",
                             "10 Interview Guides / mo",
@@ -74,11 +84,13 @@ const PricingSection = () => {
                             "Single User"
                         ]}
                     />
-                    <PricingCard 
+                    <PricingCard
                         tier="Agency"
                         price="$149"
                         description="Power for growing agencies and recruiting teams."
                         highlight={true}
+                        onClick={() => isPro ? openCustomerPortal() : upgradeToPro('agency')}
+                        buttonText={isPro ? "Manage Subscription" : "Start Free Trial"}
                         features={[
                             "Unlimited Everything",
                             "Advanced Screening Questions",
@@ -88,7 +100,7 @@ const PricingSection = () => {
                             "Priority Reasoning Speed"
                         ]}
                     />
-                    <PricingCard 
+                    <PricingCard
                         tier="Enterprise"
                         price="Custom"
                         description="For large organizations with compliance needs."

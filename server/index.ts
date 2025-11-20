@@ -1,0 +1,430 @@
+import { serve } from '@hono/node-server'
+import { Hono } from 'hono'
+import { cors } from 'hono/cors'
+import { config } from 'dotenv'
+import prisma from './prisma.js'
+import { Polar } from '@polar-sh/sdk'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { appendFile } from 'node:fs/promises'
+import { Webhook } from 'standardwebhooks'
+import { PolarError } from '@polar-sh/sdk/models/errors/polarerror.js'
+
+config()
+
+const app = new Hono()
+
+app.use('/*', cors())
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
+const WEBHOOK_SIGNATURE_LOG = path.join(__dirname, 'webhook-signatures.log')
+
+const PLAN_TIERS = ['starter', 'agency'] as const
+type PlanTier = typeof PLAN_TIERS[number]
+
+const isPlanTier = (value: string): value is PlanTier =>
+    PLAN_TIERS.includes(value as PlanTier)
+
+const PRODUCT_CONFIG: Record<PlanTier, { productId?: string }> = {
+    starter: {
+        productId: process.env.POLAR_STARTER_PRODUCT_ID,
+    },
+    agency: {
+        productId: process.env.POLAR_AGENCY_PRODUCT_ID,
+    },
+}
+
+const CHECKOUT_FAILURE_STATUSES = new Set(['failed', 'expired', 'canceled'])
+
+const polar = new Polar({
+    accessToken: process.env.POLAR_ACCESS_TOKEN || '',
+    server: 'production',
+})
+
+app.post('/api/customer-portal/session', async (c) => {
+    const { clerkId } = await c.req.json()
+
+    if (!clerkId) {
+        return c.json({ error: 'Missing clerkId' }, 400)
+    }
+
+    const origin = c.req.header('origin') || 'http://localhost:3000'
+
+    const user = await prisma.user.findUnique({
+        where: { clerkId }
+    })
+
+    if (!user) {
+        console.warn('No local user found for portal request', { clerkId })
+        return c.json({ error: 'User account not found' }, 404)
+    }
+
+    const createPortalSession = async () =>
+        polar.customerSessions.create({
+            externalCustomerId: clerkId,
+            returnUrl: `${origin}/pricing`,
+        })
+
+    const provisionPolarCustomer = async () => {
+        try {
+            await polar.customers.create({
+                email: user.email,
+                externalId: clerkId,
+                name: user.name ?? undefined,
+                metadata: {
+                    clerkId: user.clerkId,
+                },
+            })
+        } catch (error) {
+            if (error instanceof PolarError && error.statusCode === 409) {
+                console.info('Polar customer already exists during provisioning', { clerkId })
+                return
+            }
+
+            throw error
+        }
+    }
+
+    try {
+        const session = await createPortalSession()
+        return c.json({ url: session.customerPortalUrl })
+    } catch (error) {
+        if (error instanceof PolarError && error.statusCode === 404) {
+            console.info('Polar customer missing, attempting to create before portal session', { clerkId })
+
+            try {
+                await provisionPolarCustomer()
+            } catch (createError) {
+                console.error('Failed to auto-create Polar customer for portal session', createError)
+                return c.json({
+                    error: 'Unable to provision billing profile',
+                    detail: createError instanceof Error ? createError.message : 'Unknown error while creating customer',
+                }, 500)
+            }
+
+            try {
+                const session = await createPortalSession()
+                return c.json({ url: session.customerPortalUrl })
+            } catch (sessionError) {
+                console.error('Failed to create customer portal session after provisioning', sessionError)
+                if (sessionError instanceof Error) {
+                    return c.json({ error: 'Failed to start customer portal session', detail: sessionError.message }, 500)
+                }
+
+                return c.json({ error: 'Failed to start customer portal session', detail: 'Unknown error' }, 500)
+            }
+        }
+
+        console.error('Failed to create customer portal session', error)
+        if (error instanceof Error) {
+            return c.json({ error: 'Failed to start customer portal session', detail: error.message }, 500)
+        }
+
+        return c.json({ error: 'Failed to start customer portal session', detail: 'Unknown error' }, 500)
+    }
+})
+
+app.get('/', (c) => {
+    return c.text('RecruitBox API is running!')
+})
+
+// Get user subscription status
+app.get('/api/subscription/:clerkId', async (c) => {
+    const clerkId = c.req.param('clerkId')
+
+    const user = await prisma.user.findUnique({
+        where: { clerkId },
+        include: { subscription: true }
+    })
+
+    if (!user) {
+        return c.json({ error: 'User not found' }, 404)
+    }
+
+    return c.json({ subscription: user.subscription })
+})
+
+// Create or update user (can be called from frontend after login or via Clerk webhook)
+app.post('/api/users', async (c) => {
+    const { clerkId, email, name } = await c.req.json()
+
+    try {
+        const user = await prisma.user.upsert({
+            where: { clerkId },
+            update: { email, name },
+            create: { clerkId, email, name }
+        })
+        return c.json(user)
+    } catch (e) {
+        console.error(e)
+        return c.json({ error: 'Failed to sync user' }, 500)
+    }
+})
+
+// Create Polar Checkout Session
+app.post('/api/checkout', async (c) => {
+    const { tier = 'agency', email, clerkId } = await c.req.json()
+    console.log('Received /api/checkout request:', { tier, email, clerkId });
+
+    if (!email || !clerkId) {
+        console.error('Missing required fields for checkout:', { email, clerkId });
+        return c.json({ error: 'Missing required fields' }, 400)
+    }
+
+    // Check if user already has an active subscription
+    const user = await prisma.user.findUnique({
+        where: { clerkId },
+        include: { subscription: true }
+    })
+
+    if (user?.subscription?.status === 'active') {
+        return c.json({
+            error: 'User already has an active subscription',
+            code: 'ALREADY_SUBSCRIBED'
+        }, 400)
+    }
+
+    const resolvedTier: PlanTier = typeof tier === 'string' && isPlanTier(tier) ? tier : 'agency'
+    const tierConfig = PRODUCT_CONFIG[resolvedTier]
+    const productId = tierConfig?.productId
+
+    console.log('Resolved tier config:', { resolvedTier, tierConfig, productId });
+    console.log('Environment variables for products:', {
+        POLAR_STARTER_PRODUCT_ID: process.env.POLAR_STARTER_PRODUCT_ID,
+        POLAR_STARTER_PRICE_IDS: process.env.POLAR_STARTER_PRICE_IDS,
+        POLAR_AGENCY_PRODUCT_ID: process.env.POLAR_AGENCY_PRODUCT_ID,
+        POLAR_AGENCY_PRICE_IDS: process.env.POLAR_AGENCY_PRICE_IDS,
+    });
+
+    if (!productId) {
+        console.error(`No product configured for tier ${resolvedTier}`);
+        return c.json({ error: `No product configured for tier ${resolvedTier}` }, 400)
+    }
+
+    try {
+        // Create checkout session using Polar SDK
+        const origin = c.req.header('origin') || 'http://localhost:3000'
+        const checkout = await polar.checkouts.create({
+            products: [productId],
+            customerEmail: email,
+            externalCustomerId: clerkId,
+            successUrl: `${origin}/?checkout=success`,
+            returnUrl: `${origin}/`,
+            metadata: {
+                userId: clerkId,
+                tier: resolvedTier,
+            },
+            customerMetadata: {
+                clerkId,
+                tier: resolvedTier,
+            },
+        })
+
+        return c.json({ url: checkout.url })
+    } catch (error) {
+        console.error('Failed to create checkout via Polar SDK', error)
+        if (error instanceof Error) {
+            return c.json({ error: 'Failed to create checkout session', detail: error.message }, 500)
+        }
+
+        return c.json({ error: 'Failed to create checkout session', detail: 'Unknown error' }, 500)
+    }
+})
+
+// Polar Webhook
+app.post('/api/webhooks/polar', async (c) => {
+    const webhookSecret = process.env.POLAR_WEBHOOK_SECRET
+    if (!webhookSecret) {
+        return c.json({ error: 'No webhook secret configured' }, 500)
+    }
+
+    const signatureHeader = c.req.header('webhook-signature')
+    const webhookIdHeader = c.req.header('webhook-id')
+    const timestampHeader = c.req.header('webhook-timestamp')
+
+    if (!signatureHeader || !webhookIdHeader || !timestampHeader) {
+        return c.json({ error: 'Missing webhook signature headers' }, 400)
+    }
+
+    const rawBody = await c.req.text()
+    const verifier = new Webhook(Buffer.from(webhookSecret, 'utf8').toString('base64'))
+
+    try {
+        verifier.verify(rawBody, {
+            'webhook-id': webhookIdHeader,
+            'webhook-timestamp': timestampHeader,
+            'webhook-signature': signatureHeader,
+        })
+    } catch (error) {
+        console.error('Invalid Polar webhook signature', error)
+        return c.json({ error: 'Invalid webhook signature' }, 401)
+    }
+
+    let body: any
+    try {
+        body = JSON.parse(rawBody)
+    } catch (error) {
+        console.error('Invalid Polar webhook payload', error)
+        return c.json({ error: 'Invalid JSON payload' }, 400)
+    }
+
+    const event = body?.type
+    const data = body?.data
+
+    await persistSignatureLog({
+        event,
+        signature: signatureHeader,
+        webhookId: webhookIdHeader,
+        timestamp: timestampHeader,
+    })
+
+    console.log('Received Polar Webhook:', event)
+
+    if (!event || !data) {
+        return c.json({ received: true })
+    }
+
+    try {
+        switch (event) {
+            case 'checkout.updated':
+                await handleCheckoutUpdatedEvent(data)
+                break
+            case 'subscription.created':
+            case 'subscription.updated':
+                await handleSubscriptionEvent(data)
+                break
+            case 'subscription.cancelled':
+                await handleSubscriptionCancelledEvent(data)
+                break
+            default:
+                break
+        }
+    } catch (error) {
+        console.error(`Failed to process Polar webhook: ${event}`, error)
+        return c.json({ error: 'Failed to process webhook' }, 500)
+    }
+
+    return c.json({ received: true })
+})
+
+const parsePolarDate = (value?: string | null) => (value ? new Date(value) : null)
+
+const resolveClerkId = (payload: any): string | undefined =>
+    payload?.metadata?.userId ??
+    payload?.metadata?.clerkId ??
+    payload?.customer?.external_id ??
+    payload?.customer?.metadata?.clerkId
+
+const persistSignatureLog = async (entry: { event?: string; signature: string; webhookId: string; timestamp: string }) => {
+    try {
+        await appendFile(
+            WEBHOOK_SIGNATURE_LOG,
+            `${JSON.stringify({ ...entry, receivedAt: new Date().toISOString() })}\n`
+        )
+    } catch (error) {
+        console.error('Failed to persist webhook signature', error)
+    }
+}
+
+const syncSubscriptionRecord = async (clerkId: string, subscriptionData: any) => {
+    if (!subscriptionData?.id) {
+        console.warn('Subscription payload missing id, skipping sync')
+        return
+    }
+
+    try {
+        await prisma.subscription.upsert({
+            where: { polarId: subscriptionData.id },
+            update: {
+                status: subscriptionData.status,
+                currentPeriodEnd: parsePolarDate(subscriptionData.current_period_end),
+            },
+            create: {
+                polarId: subscriptionData.id,
+                status: subscriptionData.status,
+                currentPeriodEnd: parsePolarDate(subscriptionData.current_period_end),
+                user: {
+                    connect: { clerkId },
+                },
+            },
+        })
+    } catch (error) {
+        console.error('Failed to sync subscription record', error)
+    }
+}
+
+const deleteSubscriptionForUser = async (clerkId: string) => {
+    try {
+        await prisma.subscription.deleteMany({
+            where: {
+                user: {
+                    clerkId,
+                },
+            },
+        })
+    } catch (error) {
+        console.error('Failed to delete subscription for user', error)
+    }
+}
+
+const handleCheckoutUpdatedEvent = async (data: any) => {
+    const clerkId = resolveClerkId(data)
+
+    if (!clerkId) {
+        console.warn('checkout.updated missing clerkId metadata')
+        return
+    }
+
+    if (data.status === 'succeeded') {
+        const subscriptionId = data.subscription?.id
+
+        if (!subscriptionId) {
+            console.warn('checkout.updated missing subscription reference')
+            return
+        }
+
+        try {
+            const subscription = await polar.subscriptions.get({ id: subscriptionId })
+            await syncSubscriptionRecord(clerkId, subscription)
+        } catch (error) {
+            console.error('Failed to fetch subscription after checkout success', error)
+        }
+
+        return
+    }
+
+    if (CHECKOUT_FAILURE_STATUSES.has(data.status)) {
+        await deleteSubscriptionForUser(clerkId)
+    }
+}
+
+const handleSubscriptionEvent = async (data: any) => {
+    const clerkId = resolveClerkId(data)
+
+    if (!clerkId) {
+        console.warn('Subscription event missing clerkId metadata')
+        return
+    }
+
+    await syncSubscriptionRecord(clerkId, data)
+}
+
+const handleSubscriptionCancelledEvent = async (data: any) => {
+    const clerkId = resolveClerkId(data)
+
+    if (!clerkId) {
+        console.warn('Subscription cancelled event missing clerkId metadata')
+        return
+    }
+
+    await syncSubscriptionRecord(clerkId, data)
+}
+
+const port = 3001
+console.log(`Server is running on port ${port}`)
+
+serve({
+    fetch: app.fetch,
+    port
+})

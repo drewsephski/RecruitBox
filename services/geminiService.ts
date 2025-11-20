@@ -4,7 +4,7 @@ import { RecruitmentResult, GenerationConfig } from "../types";
 // Initialize client strictly with API Key from process.env directly
 const ai = new GoogleGenAI({ apiKey: process.env.API_KEY });
 
-const MODEL_NAME = 'gemini-3-pro-preview';
+const MODEL_NAME = 'gemini-2.0-flash';
 
 // Define the schema for structured output
 const recruitmentSchema = {
@@ -87,10 +87,6 @@ export const generateRecruitmentAssets = async (rawNotes: string, config: Genera
       config: {
         responseMimeType: "application/json",
         responseSchema: recruitmentSchema,
-        // Thinking config as requested for complex reasoning
-        thinkingConfig: {
-          thinkingBudget: 16384, 
-        },
       }
     });
 
@@ -110,11 +106,6 @@ export const sendChatMessage = async (history: {role: string, parts: {text: stri
         model: MODEL_NAME,
         // Use 'as any' to ensure compatibility with SDK's internal Content type definition if needed
         history: history as any,
-        config: {
-            thinkingConfig: {
-                thinkingBudget: 4096 
-            }
-        }
     });
 
     const result = await chat.sendMessage({ message });
