@@ -12,6 +12,7 @@ interface UserContextType {
   openPaywall: () => void;
   closePaywall: () => void;
   isLoading: boolean;
+  checkoutLoading: boolean;
   refreshSubscription: () => Promise<void>;
   openCustomerPortal: () => Promise<void>;
 }
@@ -26,14 +27,19 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   const [isSignUpOpen, setIsSignUpOpen] = useState(false);
   const [pendingCheckout, setPendingCheckout] = useState(false);
   const [pendingCheckoutTier, setPendingCheckoutTier] = useState<PlanTier>('agency');
+  const [checkoutLoading, setCheckoutLoading] = useState(false);
 
   const syncUser = useCallback(async () => {
     if (!user) {
-      console.log('UserContext: No user available for backend sync');
+      console.log('[UserSync] No user available for backend sync');
       return;
     }
 
-    console.log('UserContext: Syncing user to backend...');
+    console.log('[UserSync] Syncing user to backend...', {
+      userId: user.id,
+      email: user.primaryEmailAddress?.emailAddress,
+    });
+
     try {
       const syncResponse = await Promise.race([
         fetch('/api/users', {
@@ -49,13 +55,15 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
       ]) as Response;
 
       if (!syncResponse.ok) {
-        console.error('UserContext: Failed to sync user, status:', syncResponse.status);
+        console.error('[UserSync] Failed to sync user, status:', syncResponse.status);
+        const errorText = await syncResponse.text().catch(() => 'No error details');
+        console.error('[UserSync] Error details:', errorText);
       } else {
-        console.log('UserContext: User synced successfully');
+        console.log('[UserSync] User synced successfully');
       }
     } catch (error) {
-      console.error('UserContext: Error while syncing user to backend', error);
-      throw error;
+      console.error('[UserSync] Error while syncing user to backend', error);
+      // Don't throw - allow the app to continue even if sync fails
     }
   }, [user]);
 
@@ -130,13 +138,32 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   }, [user, isUserLoaded, pendingCheckout, pendingCheckoutTier]);
 
   const proceedToCheckout = async (tier: PlanTier) => {
-    if (!user) return;
+    if (!user) {
+      console.error('[Checkout] No user available');
+      return;
+    }
+
+    if (checkoutLoading) {
+      console.log('[Checkout] Already processing checkout, ignoring duplicate click');
+      return;
+    }
+
+    setCheckoutLoading(true);
+    console.log('[Checkout] Starting checkout flow', {
+      tier,
+      userId: user.id,
+      email: user.primaryEmailAddress?.emailAddress,
+    });
 
     try {
       // Call backend to create Polar checkout session
+      console.log('[Checkout] Calling /api/checkout...');
+
       const response = await fetch('/api/checkout', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+        },
         body: JSON.stringify({
           tier,
           email: user.primaryEmailAddress?.emailAddress,
@@ -144,55 +171,83 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
         })
       });
 
+      console.log('[Checkout] Response status:', response.status);
+
       if (!response.ok) {
-        const errorData = await response.json();
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('[Checkout] API error:', errorData);
+
         if (errorData.code === 'ALREADY_SUBSCRIBED') {
-          console.log('User already subscribed, redirecting to portal');
+          console.log('[Checkout] User already subscribed, redirecting to portal');
+          setCheckoutLoading(false);
           await openCustomerPortal();
           return;
         }
-        throw new Error(errorData.error || 'Failed to create checkout session');
+
+        throw new Error(errorData.error || errorData.detail || 'Failed to create checkout session');
       }
 
-      const { url } = await response.json();
+      const data = await response.json();
+      console.log('[Checkout] Checkout session created:', data);
+
+      if (!data.url) {
+        throw new Error('No checkout URL received from server');
+      }
 
       // Redirect to Polar Checkout
-      window.location.href = url;
+      console.log('[Checkout] Redirecting to:', data.url);
+      window.location.href = data.url;
+      // Don't reset loading state - we're navigating away
     } catch (error) {
-      console.error('Failed to start checkout:', error);
-      alert('Failed to start checkout. Please try again.');
+      console.error('[Checkout] Failed to start checkout:', error);
+      setCheckoutLoading(false);
+
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Failed to start checkout: ${errorMessage}\n\nPlease try again or contact support if the issue persists.`);
     }
   };
 
   const openCustomerPortal = async () => {
     if (!user) {
-      console.log('No user found, opening sign-up before portal access');
+      console.log('[CustomerPortal] No user found, opening sign-up');
       setIsSignUpOpen(true);
       return;
     }
 
+    console.log('[CustomerPortal] Opening customer portal for user:', user.id);
+
     try {
       await syncUser();
 
+      console.log('[CustomerPortal] Calling /api/customer-portal/session...');
       const response = await fetch('/api/customer-portal/session', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ clerkId: user.id })
       });
 
+      console.log('[CustomerPortal] Response status:', response.status);
+
       if (!response.ok) {
-        throw new Error('Failed to start customer portal session');
+        const errorData = await response.json().catch(() => ({ error: 'Unknown error' }));
+        console.error('[CustomerPortal] API error:', errorData);
+        throw new Error(errorData.error || errorData.detail || 'Failed to start customer portal session');
       }
 
       const data = await response.json();
+      console.log('[CustomerPortal] Portal session created');
+
       if (!data.url) {
         throw new Error('Customer portal URL missing in response');
       }
 
+      console.log('[CustomerPortal] Redirecting to portal');
       window.location.href = data.url;
     } catch (error) {
-      console.error('Failed to open customer portal', error);
-      alert('Unable to open the billing portal. If this persists, please contact support.');
+      console.error('[CustomerPortal] Failed to open customer portal', error);
+
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      alert(`Unable to open the billing portal: ${errorMessage}\n\nIf this persists, please contact support.`);
     }
   };
 
@@ -221,7 +276,7 @@ export const UserProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <UserContext.Provider value={{ isPro, upgradeToPro, isPaywallOpen, openPaywall, closePaywall, isLoading, refreshSubscription, openCustomerPortal }}>
+    <UserContext.Provider value={{ isPro, upgradeToPro, isPaywallOpen, openPaywall, closePaywall, isLoading, checkoutLoading, refreshSubscription, openCustomerPortal }}>
       {children}
       <SignUpModal
         isOpen={isSignUpOpen}

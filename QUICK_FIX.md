@@ -23,6 +23,7 @@ vercel --prod
 |-------|--------|-----|
 | **Can't scroll on page** | ✅ Fixed | Dynamic import with native scroll fallback |
 | **Checkout sessions not working** | ✅ Fixed | Enhanced CORS + logging + validation |
+| **Pricing buttons not working** | ✅ Fixed | Added logging, loading states, error handling |
 
 ---
 
@@ -30,6 +31,10 @@ vercel --prod
 
 - ✏️ `App.tsx` - Scrolling fix
 - ✏️ `server/index.ts` - Checkout fix + health endpoint
+- ✏️ `contexts/UserContext.tsx` - Enhanced logging + loading states
+- ✏️ `components/PricingSection.tsx` - Loading state + click logging
+- 📄 `services/api.ts` - NEW: API utility module
+- 📄 `PRICING_BUTTONS_FIX.md` - Detailed pricing button debugging guide
 - 📄 `PRODUCTION_FIXES.md` - Detailed debugging guide
 - 📄 `FIXES_SUMMARY.md` - Complete explanation
 - 🔧 `test-production.sh` - Pre-deployment test script
@@ -64,6 +69,9 @@ Verifies everything before deployment
 ### ❌ "No product configured for tier"
 **Fix**: Add `POLAR_STARTER_PRODUCT_ID` and `POLAR_AGENCY_PRODUCT_ID` to Vercel
 
+### ❌ Pricing buttons don't work
+**Fix**: Check browser console for `[Checkout]` logs. See `PRICING_BUTTONS_FIX.md`
+
 ### ❌ Page still won't scroll
 **Fix**: Check browser console for errors. Should see "using native scroll" message
 
@@ -75,9 +83,10 @@ Verifies everything before deployment
 ## Where to Look for Help
 
 1. **Quick issues**: This file
-2. **Deployment**: `DEPLOYMENT_CHECKLIST.md`
-3. **Detailed debugging**: `PRODUCTION_FIXES.md`
-4. **Complete explanation**: `FIXES_SUMMARY.md`
+2. **Pricing buttons**: `PRICING_BUTTONS_FIX.md`
+3. **Deployment**: `DEPLOYMENT_CHECKLIST.md`
+4. **Detailed debugging**: `PRODUCTION_FIXES.md`
+5. **Complete explanation**: `FIXES_SUMMARY.md`
 
 ---
 

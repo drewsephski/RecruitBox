@@ -57,7 +57,7 @@ const PricingCard = ({
 );
 
 const PricingSection = () => {
-    const { upgradeToPro, isPro, openCustomerPortal } = useUser();
+    const { upgradeToPro, isPro, openCustomerPortal, checkoutLoading } = useUser();
 
     return (
         <section className="py-20 md:py-32 bg-[#050505] border-t border-white/5 relative z-20">
@@ -74,8 +74,13 @@ const PricingSection = () => {
                         tier="Starter"
                         price="$49"
                         description="For individual recruiters and small startups."
-                        onClick={() => isPro ? openCustomerPortal() : upgradeToPro('starter')}
-                        buttonText={isPro ? "Current Plan" : "Get Started"}
+                        onClick={() => {
+                            console.log('[PricingSection] Starter button clicked');
+                            if (!checkoutLoading) {
+                                isPro ? openCustomerPortal() : upgradeToPro('starter');
+                            }
+                        }}
+                        buttonText={checkoutLoading ? "Processing..." : (isPro ? "Current Plan" : "Get Started")}
                         features={[
                             "Unlimited Job Descriptions",
                             "10 Interview Guides / mo",
@@ -89,8 +94,13 @@ const PricingSection = () => {
                         price="$149"
                         description="Power for growing agencies and recruiting teams."
                         highlight={true}
-                        onClick={() => isPro ? openCustomerPortal() : upgradeToPro('agency')}
-                        buttonText={isPro ? "Manage Subscription" : "Start Free Trial"}
+                        onClick={() => {
+                            console.log('[PricingSection] Agency button clicked');
+                            if (!checkoutLoading) {
+                                isPro ? openCustomerPortal() : upgradeToPro('agency');
+                            }
+                        }}
+                        buttonText={checkoutLoading ? "Processing..." : (isPro ? "Manage Subscription" : "Start Free Trial")}
                         features={[
                             "Unlimited Everything",
                             "Advanced Screening Questions",
