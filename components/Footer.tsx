@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import FeedbackModal from './FeedbackModal';
+import Logo from './ui/Logo';
 
 const Footer: React.FC = () => {
   const [isFeedbackOpen, setIsFeedbackOpen] = useState(false);
@@ -9,7 +10,7 @@ const Footer: React.FC = () => {
        <div className="max-w-screen-2xl mx-auto px-6 flex flex-col md:flex-row justify-between gap-10">
           <div className="max-w-xs">
              <div className="flex items-center gap-3 mb-6">
-                <div className="w-5 h-5 bg-neutral-800 rounded-[2px]"></div>
+                <Logo className="w-5 h-5" />
                 <span className="font-mono text-neutral-300 text-xs">RECRUITBOX</span>
              </div>
              <p className="leading-relaxed mb-6">

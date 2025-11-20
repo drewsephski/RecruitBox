@@ -7,7 +7,7 @@ export const handler: Handler = async (event) => {
     // Ensure environment variables are set for path resolution
     process.env.PWD = process.env.PWD || "/var/task";
     process.env.POLAR_DISABLE_FILE_CONFIG = "true";
-    
+
     // Create a new request object that matches what Hono expects
     const url = new URL(event.rawUrl);
     const request = new Request(url.toString(), {
@@ -21,7 +21,7 @@ export const handler: Handler = async (event) => {
 
     // Convert the response to the format Netlify expects
     const body = await response.text();
-    
+
     return {
       statusCode: response.status,
       headers: Object.fromEntries(response.headers.entries()),
