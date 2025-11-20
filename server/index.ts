@@ -18,6 +18,7 @@ export const app = new Hono()
 const allowedOrigins = [
     'http://localhost:3000',
     'http://localhost:5173',
+    'https://recruit-box.vercel.app',
     process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '',
     process.env.PRODUCTION_URL || '',
 ].filter(Boolean)
