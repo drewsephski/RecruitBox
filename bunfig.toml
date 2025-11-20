@@ -1,0 +1,28 @@
+# Enable Bun's module cache for faster installs
+[install]
+cache = true
+
+# Configure Bun's module resolution
+[module]
+external_node = true
+
+# Configure Bun's runtime
+[runtime]
+jsx = "automatic"
+
+# Configure Bun's test runner
+[test]
+timeout = 5000
+
+# Configure Bun's bundler
+[bundle]
+entry = "./src/main.tsx"
+outdir = "./dist"
+minify = true
+splitting = true
+sourcemap = "external"
+
+# Configure Bun's dev server
+[dev]
+port = 3000
+entry = "./src/main.tsx"

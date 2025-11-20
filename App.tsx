@@ -13,6 +13,7 @@ import PaywallModal from './components/PaywallModal';
 import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import { useUser as useClerkUser } from '@clerk/clerk-react';
 import { LoginPage, SignupPage } from './components/Auth';
+import ErrorBoundary from './components/ErrorBoundary';
 
 const CheckoutSuccessSection = ({ onDismiss }: { onDismiss: () => void }) => (
   <section className="relative isolate overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br from-green-500/10 via-slate-900 to-slate-900 px-6 py-12 sm:px-12 sm:py-16 mb-10">
@@ -269,9 +270,11 @@ const AppContent: React.FC = () => {
 const App: React.FC = () => {
   console.log("App.tsx: App component rendering");
   return (
-    <UserProvider>
-      <AppContent />
-    </UserProvider>
+    <ErrorBoundary>
+      <UserProvider>
+        <AppContent />
+      </UserProvider>
+    </ErrorBoundary>
   );
 };
 

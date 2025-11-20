@@ -1,20 +1,25 @@
 {
   "name": "recruitbox",
   "private": true,
-  "version": "0.0.0",
+  "version": "1.0.0",
   "type": "module",
   "scripts": {
-    "dev": "concurrently \"npm:dev:vite\" \"npm:dev:server\"",
+    "dev": "bun run --bun dev:vite",
     "dev:vite": "vite",
-    "dev:server": "tsx server/index.ts",
-    "build": "vite build",
-    "preview": "vite preview",
-    "vercel-build": "prisma generate && vite build"
+    "dev:server": "bun run --bun server/index.ts",
+    "build": "bun run --bun build:client && bun run --bun build:server",
+    "build:client": "vite build",
+    "build:server": "bun build ./server/index.ts --outdir ./netlify/functions --target bun --format esm --external @polar-sh/sdk --external @prisma/client",
+    "preview": "bun run --bun vite preview",
+    "postinstall": "prisma generate",
+    "netlify:build": "bun install && bun run build",
+    "netlify:dev": "netlify dev"
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.56.0",
     "@google/genai": "^1.30.0",
     "@hono/node-server": "^1.19.6",
+    "@netlify/functions": "^3.0.0",
     "@polar-sh/sdk": "^0.41.5",
     "@prisma/client": "^6.19.0",
     "@tailwindcss/vite": "^4.1.17",
@@ -27,15 +32,25 @@
     "smooth-scrollbar": "8.8.4"
   },
   "devDependencies": {
+    "@types/bun": "^1.0.7",
     "@types/node": "^22.19.1",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "^18.2.0",
     "@vitejs/plugin-react": "^5.0.0",
     "autoprefixer": "^10.4.22",
-    "concurrently": "^9.2.1",
+    "bun-types": "^1.0.0",
+    "netlify-cli": "^17.0.0",
     "postcss": "^8.5.6",
     "prisma": "^6.19.0",
     "tailwindcss": "^4.1.17",
-    "tsx": "^4.20.6",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
+  },
+  "engines": {
+    "node": ">=18.0.0",
+    "bun": "^1.0.0"
+  },
+  "bun": {
+    "target": "bun"
   }
 }
