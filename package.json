@@ -8,7 +8,8 @@
     "dev:vite": "vite",
     "dev:server": "tsx server/index.ts",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "vercel-build": "prisma generate && vite build"
   },
   "dependencies": {
     "@clerk/clerk-react": "^5.56.0",

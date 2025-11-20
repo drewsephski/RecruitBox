@@ -12,7 +12,8 @@ import { PolarError } from '@polar-sh/sdk/models/errors/polarerror.js'
 
 config()
 
-const app = new Hono()
+// Create and export the Hono app
+export const app = new Hono()
 
 app.use('/*', cors())
 
