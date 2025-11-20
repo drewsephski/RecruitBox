@@ -20,6 +20,7 @@ const allowedOrigins = [
     'http://localhost:3000',
     'http://localhost:5173',
     'https://recruit-box.vercel.app',
+    'https://recruit-box.netlify.app',
     process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '',
     process.env.PRODUCTION_URL || '',
 ].filter(Boolean)
@@ -47,11 +48,14 @@ let WEBHOOK_SIGNATURE_LOG: string;
 if (process.env.NETLIFY) {
   // In Netlify environment, use /tmp for writeable storage
   WEBHOOK_SIGNATURE_LOG = '/tmp/webhook-signatures.log';
-} else {
+} else if (import.meta.url) {
   // In development, use the local file system
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
   WEBHOOK_SIGNATURE_LOG = path.join(__dirname, 'webhook-signatures.log');
+} else {
+    // Fallback for other environments
+    WEBHOOK_SIGNATURE_LOG = '/tmp/webhook-signatures.log';
 }
 
 const PLAN_TIERS = ['starter', 'agency'] as const
@@ -317,8 +321,16 @@ app.post('/api/checkout', async (c) => {
 
     try {
         // Create checkout session using Polar SDK
-        const origin = c.req.header('origin') || c.req.header('referer')?.split('/').slice(0, 3).join('/') || 'http://localhost:3000'
+        const origin = c.req.header('origin') || c.req.header('referer')?.split('/').slice(0, 3).join('/') || process.env.PRODUCTION_URL
         console.log('[Checkout] Using origin:', origin);
+
+        // DEBUG: Log the origin and related headers
+        console.log('[Checkout Debug] Headers:', {
+            origin: c.req.header('origin'),
+            referer: c.req.header('referer'),
+            productionUrl: process.env.PRODUCTION_URL,
+            finalOrigin: origin,
+        });
 
         const checkoutParams = {
             products: [productId],
