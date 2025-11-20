@@ -1,3 +1,4 @@
+/// <reference types="bun-types" />
 import type { Handler } from '@netlify/functions';
 import { app } from '../../server';
 
@@ -36,11 +37,8 @@ export const handler: Handler = async (event) => {
       }
     });
 
-    // Handle API Gateway v2.0 (Netlify Functions v2)
+    // Handle path resolution for Netlify Functions
     let path = event.path || '';
-    if (event.rawPath) {
-      path = event.rawPath;
-    }
     
     // Remove /api prefix if present
     path = path.replace(/^\/api/, '');
