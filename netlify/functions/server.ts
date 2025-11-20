@@ -2,8 +2,18 @@
 import type { Handler } from '@netlify/functions';
 import { app } from '../../server';
 
+// Set up environment for Netlify Functions
+if (process.env.NETLIFY) {
+  // Set required environment variables for path resolution
+  process.env.PWD = process.env.PWD || "/var/task";
+  process.cwd = () => process.env.PWD!;
+  
+  // Disable file-based configuration for Polar SDK
+  process.env.POLAR_DISABLE_FILE_CONFIG = "true";
+}
+
 // For local development with Bun
-if (process.env.NODE_ENV === 'development') {
+if (process.env.NETLIFY_DEV || process.env.NODE_ENV === 'development') {
   const port = process.env.PORT || 3001;
   console.log(`Starting Bun server on http://localhost:${port}`);
   
@@ -29,6 +39,10 @@ if (process.env.NODE_ENV === 'development') {
 // For Netlify Functions
 export const handler: Handler = async (event) => {
   try {
+    // Ensure environment variables are set for path resolution
+    process.env.PWD = process.env.PWD || "/var/task";
+    process.env.POLAR_DISABLE_FILE_CONFIG = "true";
+    
     // Convert Netlify event to Hono request
     const headers = new Headers();
     Object.entries(event.headers || {}).forEach(([key, value]) => {
@@ -36,11 +50,6 @@ export const handler: Handler = async (event) => {
         headers.set(key, value);
       }
     });
-
-    // Set environment variables for path resolution
-    if (!process.cwd) {
-      process.cwd = () => __dirname;
-    }
 
     // Handle path resolution for Netlify Functions
     let path = event.path || '';
