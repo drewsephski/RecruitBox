@@ -104,7 +104,7 @@ const resolveRequestOrigin = (c: Context): string => {
         return new URL(c.req.url).origin
     } catch (error) {
         console.warn('[Request] Failed to resolve URL origin, falling back to PRODUCTION_URL', error)
-        return process.env.PRODUCTION_URL || allowedOrigins[0] || 'http://localhost:3000'
+        return process.env.PRODUCTION_URL || allowedOrigins[0] || 'https://recruit-box.netlify.app'
     }
 }
 
@@ -210,7 +210,7 @@ app.get('/api/health', (c) => {
         status: 'ok',
         timestamp: new Date().toISOString(),
         environment: {
-            nodeEnv: process.env.NODE_ENV || 'development',
+            nodeEnv: process.env.NODE_ENV || 'production',
             hasDatabase: !!process.env.DATABASE_URL,
             hasClerkPublic: !!process.env.VITE_CLERK_PUBLISHABLE_KEY,
             hasClerkSecret: !!process.env.CLERK_SECRET_KEY,
