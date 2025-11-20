@@ -37,6 +37,11 @@ export const handler: Handler = async (event) => {
       }
     });
 
+    // Set environment variables for path resolution
+    if (!process.cwd) {
+      process.cwd = () => __dirname;
+    }
+
     // Handle path resolution for Netlify Functions
     let path = event.path || '';
     
