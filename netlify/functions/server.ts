@@ -58,10 +58,20 @@ export const handler: Handler = async (event) => {
     });
 
     // Create a new URL with the correct path
+    const host = event.headers.host || 'localhost:8888'; // Default to localhost:8888 for Netlify Dev
+    const path = event.path || '/.netlify/functions/server';
+    const queryString = event.queryStringParameters 
+      ? `?${new URLSearchParams(event.queryStringParameters as Record<string, string>).toString()}` 
+      : '';
+      
     const url = new URL(
-      event.rawUrl || 
-      `https://${event.headers.host || ''}${event.path || ''}${event.queryStringParameters ? `?${new URLSearchParams(event.queryStringParameters as Record<string, string>).toString()}` : ''}`
+      event.rawUrl || `https://${host}${path}${queryString}`
     );
+    
+    // Ensure the path is correctly set for API routes
+    if (!url.pathname.startsWith('/.netlify/functions/')) {
+      url.pathname = `/.netlify/functions/server${path}`;
+    }
 
     // Create a new request object
     const request = new Request(url.toString(), {
