@@ -186,10 +186,15 @@ const AuthenticatedApp: React.FC = () => {
   const isSmoothScrollActive = scrollMode === 'smooth' && scrollbar !== null;
 
   // Always ensure the root allows scrolling unless smooth-scrollbar is actively initialized
-  const rootClassName = `${isSmoothScrollActive ? 'h-screen w-screen overflow-hidden' : 'min-h-screen w-full'} bg-[#050505] text-white font-sans selection:bg-sky-500/30 selection:text-sky-200`;
+  const rootClassName = `${isSmoothScrollActive ? 'h-screen w-screen overflow-hidden' : 'min-h-screen w-full overflow-y-auto'} bg-[#050505] text-white font-sans selection:bg-sky-500/30 selection:text-sky-200`;
+
+  // Log scroll mode for debugging
+  useEffect(() => {
+    console.log('Scroll mode changed:', scrollMode, 'Scrollbar initialized:', scrollbar !== null);
+  }, [scrollMode, scrollbar]);
 
   return (
-    <div className={rootClassName}>
+    <div className={rootClassName} data-scroll-mode={scrollMode}>
       <div className="bg-noise" />
       {/* FIXED ELEMENTS (Outside Scroll Container) */}
       <Navbar
@@ -212,6 +217,7 @@ const AuthenticatedApp: React.FC = () => {
           minHeight: isSmoothScrollActive ? undefined : '100vh'
         }}
         id="main-scroll-wrapper"
+        data-scrollbar-active={isSmoothScrollActive ? 'true' : 'false'}
       >
         <div className="min-h-screen flex flex-col">
           {showCheckoutSuccess && <CheckoutSuccessSection onDismiss={dismissSuccess} />}
