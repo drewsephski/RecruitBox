@@ -15,7 +15,7 @@ export default defineConfig(({ mode }) => {
           changeOrigin: true,
         }
       },
-      allowedHosts: ['localhost', '127.0.0.1', '0.0.0.0', 'wan-saccharolytic-rufina.ngrok-free.dev'],
+      allowedHosts: ['localhost', '127.0.0.1', '0.0.0.0', 'wan-saccharolytic-rufina.ngrok-free.dev', 'recruitbox.click'],
     },
     plugins: [react(), tailwindcss()],
     define: {

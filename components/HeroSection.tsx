@@ -16,7 +16,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ scrollToSection }) => {
 
                 {/* Announcement Pill */}
                 <div className="mb-8 md:mb-10 animate-slide-up opacity-0" style={{ animationDelay: '0.1s', animationFillMode: 'forwards' }}>
-                    <div className="inline-flex items-center gap-3 px-3 py-1 rounded-full bg-white/[0.03] border border-white/10 text-[10px] md:text-[11px] font-mono text-neutral-400 hover:bg-white/[0.06] hover:text-neutral-300 transition-all cursor-default backdrop-blur-md">
+                    <div className="inline-flex items-center gap-3 px-3 py-1 rounded-full bg-white/3 border border-white/10 text-[10px] md:text-[11px] font-mono text-neutral-400 hover:bg-white/[0.06] hover:text-neutral-300 transition-all cursor-default backdrop-blur-md">
                         <span className="flex h-1.5 w-1.5 relative">
                             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-sky-400 opacity-75"></span>
                             <span className="relative inline-flex rounded-full h-1.5 w-1.5 bg-sky-500"></span>
