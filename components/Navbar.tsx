@@ -7,14 +7,15 @@ interface NavbarProps {
   isPro: boolean;
   openPaywall: () => void;
   onChatOpen?: () => void;
-  scrollToSection?: (e: React.MouseEvent<HTMLElement>, id: string) => void;
+  scrollToSection?: (id: string) => void;
   openCustomerPortal?: () => void;
 }
 
 const Navbar: React.FC<NavbarProps> = ({ isPro, openPaywall, onChatOpen, scrollToSection, openCustomerPortal }) => {
   const handleNavClick = (e: React.MouseEvent<HTMLElement>, id: string) => {
+    e.preventDefault();
     if (scrollToSection) {
-      scrollToSection(e, id);
+      scrollToSection(id);
     }
   };
 

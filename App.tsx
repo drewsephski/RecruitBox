@@ -82,11 +82,8 @@ const AuthenticatedApp: React.FC = () => {
   const navigate = useNavigate();
   const [showCheckoutSuccess, setShowCheckoutSuccess] = useState(false);
 
-  // Use Lenis hook for scroll callbacks
-  const lenis = useLenis((lenis) => {
-    // Called on every scroll - can be used for scroll-based animations
-    // console.log('Scroll position:', lenis.scroll);
-  });
+  // Simple Lenis hook for smooth scrolling
+  const lenis = useLenis();
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -108,20 +105,13 @@ const AuthenticatedApp: React.FC = () => {
     setShowCheckoutSuccess(false);
   };
 
-  const scrollToSection = (e: React.MouseEvent<HTMLElement> | React.TouchEvent<HTMLElement>, id: string) => {
-    e.preventDefault();
+  const scrollToSection = (id: string) => {
+    const target = document.querySelector(id) as HTMLElement | null;
+    if (!target) return;
 
-    const target = document.querySelector(id);
-    if (!target || !lenis) return;
-
-    const headerOffset = 80;
-    const elementPosition = target.getBoundingClientRect().top + lenis.scroll;
-    const offsetPosition = elementPosition - headerOffset;
-
-    // Use Lenis scrollTo method for smooth scrolling
-    lenis.scrollTo(offsetPosition, {
+    lenis?.scrollTo(target.offsetTop, {
       duration: 1.2,
-      easing: (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t, // easeInOutQuad
+      easing: (t: number) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t),
     });
   };
 
