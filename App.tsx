@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import ChatDrawer from './components/ChatDrawer';
 import FeaturesSection from './components/FeaturesSection';
 import PricingSection from './components/PricingSection';
@@ -77,10 +77,54 @@ const CheckoutSuccessSection = ({ onDismiss }: { onDismiss: () => void }) => (
 const AuthenticatedApp: React.FC = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const { openPaywall, isPro, refreshSubscription, openCustomerPortal } = useUser();
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
+  const [scrollbar, setScrollbar] = useState<any>(null);
+  const [scrollMode, setScrollMode] = useState<'smooth' | 'native'>('native');
   const location = useLocation();
   const navigate = useNavigate();
   const [showCheckoutSuccess, setShowCheckoutSuccess] = useState(false);
 
+  useEffect(() => {
+    let sb: any = null;
+
+    const initScrollbar = async () => {
+      if (!scrollContainerRef.current) return;
+
+      try {
+        // Try to dynamically import smooth-scrollbar
+        const SmoothScrollbar = (await import('smooth-scrollbar')).default;
+
+        sb = SmoothScrollbar.init(scrollContainerRef.current, {
+          damping: 0.08,
+          renderByPixels: true,
+          continuousScrolling: true,
+          alwaysShowTracks: false,
+        });
+
+        setScrollbar(sb);
+        setScrollMode('smooth');
+        console.log('smooth-scrollbar initialized successfully');
+      } catch (error) {
+        console.warn('smooth-scrollbar not available, using native scroll:', error);
+        // Ensure native scrolling is enabled
+        setScrollbar(null);
+        setScrollMode('native');
+      }
+    };
+
+    initScrollbar();
+
+    return () => {
+      if (sb) {
+        try {
+          sb.destroy();
+          setScrollMode('native');
+        } catch (e) {
+          console.warn('Error destroying scrollbar:', e);
+        }
+      }
+    };
+  }, []);
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -110,17 +154,27 @@ const AuthenticatedApp: React.FC = () => {
 
     const headerOffset = 80;
 
-    // Native smooth scroll
-    const elementPosition = target.getBoundingClientRect().top + window.scrollY;
-    const offsetPosition = Math.max(elementPosition - headerOffset, 0);
+    if (scrollbar) {
+      // Use smooth-scrollbar if available
+      scrollbar.scrollIntoView(target, {
+        offsetTop: -headerOffset, // Offset for header
+        duration: 1000,
+        easing: (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t, // easeInOutQuad
+      });
+    } else {
+      // Fallback to native smooth scroll
+      const elementPosition = target.getBoundingClientRect().top + window.scrollY;
+      const offsetPosition = Math.max(elementPosition - headerOffset, 0);
 
-    window.scrollTo({
-      top: offsetPosition,
-      behavior: 'smooth'
-    });
+      window.scrollTo({
+        top: offsetPosition,
+        behavior: 'smooth'
+      });
+    }
   };
 
-  const rootClassName = 'min-h-screen w-full overflow-x-hidden bg-[#050505] text-white font-sans selection:bg-sky-500/30 selection:text-sky-200';
+  const isSmoothScrollActive = scrollMode === 'smooth';
+  const rootClassName = `${isSmoothScrollActive ? 'h-screen w-screen overflow-hidden' : 'min-h-screen w-full overflow-x-hidden'} bg-[#050505] text-white font-sans selection:bg-sky-500/30 selection:text-sky-200`;
 
   return (
     <div className={rootClassName}>
@@ -138,17 +192,22 @@ const AuthenticatedApp: React.FC = () => {
       <PaywallModal />
 
       {/* SCROLLABLE CONTENT */}
-      {/* SCROLLABLE CONTENT */}
       <div
+        ref={scrollContainerRef}
+        className="relative w-full"
+        style={{
+          height: isSmoothScrollActive ? '100%' : 'auto',
+          minHeight: isSmoothScrollActive ? undefined : '100vh',
+          overflow: isSmoothScrollActive ? 'hidden' : 'visible'
+        }}
         id="main-scroll-wrapper"
-        className="relative w-full min-h-screen"
       >
         <div className="min-h-screen flex flex-col">
           {showCheckoutSuccess && <CheckoutSuccessSection onDismiss={dismissSuccess} />}
           <HeroSection scrollToSection={scrollToSection} />
 
           {/* Tool Section - The Product */}
-          <ProductSection />
+          <ProductSection scrollbar={scrollbar} />
 
           <div id="features">
             <FeaturesSection />
