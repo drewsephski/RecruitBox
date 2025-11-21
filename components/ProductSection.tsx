@@ -1,56 +1,42 @@
 import React, { useRef, useEffect } from 'react';
+import { useLenis } from 'lenis/react';
 import RecruitmentSandbox from './RecruitmentSandbox';
 
-interface ProductSectionProps {
-  scrollbar: any; // Using any because smooth-scrollbar types are not strictly available in this env
-}
-
-const ProductSection: React.FC<ProductSectionProps> = ({ scrollbar }) => {
+const ProductSection: React.FC = () => {
   const productWrapperRef = useRef<HTMLDivElement>(null);
   const sidebarRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (!scrollbar || !productWrapperRef.current || !sidebarRef.current) return;
+  // Use Lenis hook for scroll-based animations
+  useLenis(() => {
+    const isDesktop = window.innerWidth >= 1024;
 
-    const listener = () => {
-      const isDesktop = window.innerWidth >= 1024;
-      // @ts-ignore
-      if (!isDesktop && sidebarRef.current) {
-        // @ts-ignore
-        sidebarRef.current.style.transform = '';
-        return;
+    if (!isDesktop && sidebarRef.current) {
+      sidebarRef.current.style.transform = '';
+      return;
+    }
+
+    if (productWrapperRef.current && sidebarRef.current) {
+      const wrapperRect = productWrapperRef.current.getBoundingClientRect();
+      const sidebarHeight = sidebarRef.current.offsetHeight;
+      const wrapperHeight = wrapperRect.height;
+
+      // Target top position (e.g. 128px from viewport top, approx matching top-32)
+      const stickyTop = 128;
+
+      let y = 0;
+      // If wrapper top is above sticky point (scrolling down), we push sidebar down relative to wrapper
+      if (wrapperRect.top < stickyTop) {
+        y = stickyTop - wrapperRect.top;
       }
 
-      // @ts-ignore
-      if (productWrapperRef.current && sidebarRef.current) {
-        const wrapperRect = productWrapperRef.current.getBoundingClientRect();
-        const sidebarHeight = sidebarRef.current.offsetHeight;
-        const wrapperHeight = wrapperRect.height;
+      // Clamp to bottom of wrapper so it doesn't overflow
+      const maxY = wrapperHeight - sidebarHeight;
+      y = Math.min(y, maxY);
+      y = Math.max(y, 0);
 
-        // Target top position (e.g. 128px from viewport top, approx matching top-32)
-        const stickyTop = 128;
-
-        let y = 0;
-        // If wrapper top is above sticky point (scrolling down), we push sidebar down relative to wrapper
-        if (wrapperRect.top < stickyTop) {
-          y = stickyTop - wrapperRect.top;
-        }
-
-        // Clamp to bottom of wrapper so it doesn't overflow
-        const maxY = wrapperHeight - sidebarHeight;
-        y = Math.min(y, maxY);
-        y = Math.max(y, 0);
-
-        sidebarRef.current.style.transform = `translate3d(0, ${y}px, 0)`;
-      }
-    };
-
-    scrollbar.addListener(listener);
-
-    return () => {
-      scrollbar.removeListener(listener);
-    };
-  }, [scrollbar]);
+      sidebarRef.current.style.transform = `translate3d(0, ${y}px, 0)`;
+    }
+  });
 
   return (
     <section id="product" className="relative z-20 py-20 lg:py-32 bg-[#050505] border-t border-white/5">

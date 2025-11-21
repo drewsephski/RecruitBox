@@ -1,4 +1,5 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { ReactLenis, useLenis } from 'lenis/react';
 import ChatDrawer from './components/ChatDrawer';
 import FeaturesSection from './components/FeaturesSection';
 import PricingSection from './components/PricingSection';
@@ -77,65 +78,15 @@ const CheckoutSuccessSection = ({ onDismiss }: { onDismiss: () => void }) => (
 const AuthenticatedApp: React.FC = () => {
   const [isChatOpen, setIsChatOpen] = useState(false);
   const { openPaywall, isPro, refreshSubscription, openCustomerPortal } = useUser();
-  const scrollContainerRef = useRef<HTMLDivElement>(null);
-  const [scrollbar, setScrollbar] = useState<any>(null);
-  const [scrollMode, setScrollMode] = useState<'smooth' | 'native'>('native');
   const location = useLocation();
   const navigate = useNavigate();
   const [showCheckoutSuccess, setShowCheckoutSuccess] = useState(false);
 
-  useEffect(() => {
-    let sb: any = null;
-    let mounted = true;
-
-    const initScrollbar = async () => {
-      if (!scrollContainerRef.current || !mounted) return;
-
-      try {
-        // Try to dynamically import smooth-scrollbar
-        const module = await import('smooth-scrollbar');
-        const SmoothScrollbar = (module.default || module) as any;
-
-        if (!mounted || !scrollContainerRef.current) return;
-
-        sb = SmoothScrollbar.init(scrollContainerRef.current, {
-          damping: 0.08,
-          renderByPixels: true,
-          continuousScrolling: true,
-          alwaysShowTracks: false,
-        });
-
-        if (mounted) {
-          setScrollbar(sb);
-          setScrollMode('smooth');
-          console.log('smooth-scrollbar initialized successfully');
-        }
-      } catch (error) {
-        console.warn('smooth-scrollbar not available, using native scroll:', error);
-        // Ensure native scrolling is enabled
-        if (mounted) {
-          setScrollbar(null);
-          setScrollMode('native');
-        }
-      }
-    };
-
-    initScrollbar();
-
-    return () => {
-      mounted = false;
-      if (sb) {
-        try {
-          sb.destroy();
-        } catch (e) {
-          console.warn('Error destroying scrollbar:', e);
-        }
-      }
-      // Always reset to native mode on cleanup
-      setScrollMode('native');
-      setScrollbar(null);
-    };
-  }, []);
+  // Use Lenis hook for scroll callbacks
+  const lenis = useLenis((lenis) => {
+    // Called on every scroll - can be used for scroll-based animations
+    // console.log('Scroll position:', lenis.scroll);
+  });
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -161,89 +112,63 @@ const AuthenticatedApp: React.FC = () => {
     e.preventDefault();
 
     const target = document.querySelector(id);
-    if (!target) return;
+    if (!target || !lenis) return;
 
     const headerOffset = 80;
+    const elementPosition = target.getBoundingClientRect().top + lenis.scroll;
+    const offsetPosition = elementPosition - headerOffset;
 
-    if (scrollbar) {
-      // Use smooth-scrollbar if available
-      scrollbar.scrollIntoView(target, {
-        offsetTop: -headerOffset, // Offset for header
-        duration: 1000,
-        easing: (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t, // easeInOutQuad
-      });
-    } else {
-      // Fallback to native smooth scroll
-      const elementPosition = target.getBoundingClientRect().top + window.scrollY;
-      const offsetPosition = Math.max(elementPosition - headerOffset, 0);
-
-      window.scrollTo({
-        top: offsetPosition,
-        behavior: 'smooth'
-      });
-    }
+    // Use Lenis scrollTo method for smooth scrolling
+    lenis.scrollTo(offsetPosition, {
+      duration: 1.2,
+      easing: (t: number) => t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t, // easeInOutQuad
+    });
   };
 
-  const isSmoothScrollActive = scrollMode === 'smooth' && scrollbar !== null;
-
-  // Always ensure the root allows scrolling unless smooth-scrollbar is actively initialized
-  const rootClassName = `${isSmoothScrollActive ? 'h-screen w-screen overflow-hidden' : 'min-h-screen w-full overflow-y-auto'} bg-[#050505] text-white font-sans selection:bg-sky-500/30 selection:text-sky-200`;
-
-  // Log scroll mode for debugging
-  useEffect(() => {
-    console.log('Scroll mode changed:', scrollMode, 'Scrollbar initialized:', scrollbar !== null);
-  }, [scrollMode, scrollbar]);
-
   return (
-    <div className={rootClassName} data-scroll-mode={scrollMode}>
-      <div className="bg-noise" />
-      {/* FIXED ELEMENTS (Outside Scroll Container) */}
-      <Navbar
-        isPro={isPro}
-        openPaywall={openPaywall}
-        onChatOpen={() => setIsChatOpen(true)}
-        scrollToSection={scrollToSection}
-        openCustomerPortal={openCustomerPortal}
-      />
+    <ReactLenis root options={{ duration: 1.2, smoothWheel: true }}>
+      <div className="min-h-screen w-full bg-[#050505] text-white font-sans selection:bg-sky-500/30 selection:text-sky-200">
+        <div className="bg-noise" />
 
-      <ChatDrawer isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
-      <PaywallModal />
+        {/* FIXED ELEMENTS */}
+        <Navbar
+          isPro={isPro}
+          openPaywall={openPaywall}
+          onChatOpen={() => setIsChatOpen(true)}
+          scrollToSection={scrollToSection}
+          openCustomerPortal={openCustomerPortal}
+        />
 
-      {/* SCROLLABLE CONTENT */}
-      <div
-        ref={scrollContainerRef}
-        className="relative w-full"
-        style={{
-          height: isSmoothScrollActive ? '100%' : 'auto',
-          minHeight: isSmoothScrollActive ? undefined : '100vh'
-        }}
-        id="main-scroll-wrapper"
-        data-scrollbar-active={isSmoothScrollActive ? 'true' : 'false'}
-      >
-        <div className="min-h-screen flex flex-col">
-          {showCheckoutSuccess && <CheckoutSuccessSection onDismiss={dismissSuccess} />}
-          <HeroSection scrollToSection={scrollToSection} />
+        <ChatDrawer isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+        <PaywallModal />
 
-          {/* Tool Section - The Product */}
-          <ProductSection scrollbar={scrollbar} />
+        {/* SCROLLABLE CONTENT */}
+        <div className="relative w-full">
+          <div className="min-h-screen flex flex-col">
+            {showCheckoutSuccess && <CheckoutSuccessSection onDismiss={dismissSuccess} />}
+            <HeroSection scrollToSection={scrollToSection} />
 
-          <div id="features">
-            <FeaturesSection />
+            {/* Tool Section - The Product */}
+            <ProductSection />
+
+            <div id="features">
+              <FeaturesSection />
+            </div>
+
+            {/* Demo Section */}
+            <div id="demo">
+              <TransformationDemo />
+            </div>
+
+            <div id="pricing">
+              <PricingSection />
+            </div>
+
+            <Footer />
           </div>
-
-          {/* Demo Section */}
-          <div id="demo">
-            <TransformationDemo />
-          </div>
-
-          <div id="pricing">
-            <PricingSection />
-          </div>
-
-          <Footer />
         </div>
       </div>
-    </div>
+    </ReactLenis>
   );
 };
 
