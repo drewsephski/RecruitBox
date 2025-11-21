@@ -107,11 +107,29 @@ const DitherBackground: React.FC = () => {
       animationFrameRef.current = requestAnimationFrame(draw);
     };
 
-    draw();
+    // Use IntersectionObserver to pause animation when off-screen
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          if (!animationFrameRef.current) {
+            draw();
+          }
+        } else {
+          if (animationFrameRef.current) {
+            cancelAnimationFrame(animationFrameRef.current);
+            animationFrameRef.current = undefined;
+          }
+        }
+      },
+      { threshold: 0 }
+    );
+
+    observer.observe(canvas);
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('resize', resize);
+      observer.disconnect();
       if (animationFrameRef.current) {
         cancelAnimationFrame(animationFrameRef.current);
       }
