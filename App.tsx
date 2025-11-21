@@ -93,7 +93,8 @@ const AuthenticatedApp: React.FC = () => {
 
       try {
         // Try to dynamically import smooth-scrollbar
-        const SmoothScrollbar = (await import('smooth-scrollbar')).default;
+        const module = await import('smooth-scrollbar');
+        const SmoothScrollbar = (module.default || module) as any;
 
         if (!mounted || !scrollContainerRef.current) return;
 

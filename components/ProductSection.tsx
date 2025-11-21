@@ -57,7 +57,7 @@ const ProductSection: React.FC<ProductSectionProps> = ({ scrollbar }) => {
       <div className="max-w-screen-2xl mx-auto px-4 md:px-6">
         <div ref={productWrapperRef} className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20">
           <div className="lg:col-span-4 relative">
-            <div ref={sidebarRef} className="space-y-10 will-change-transform">
+            <div ref={sidebarRef} className="space-y-10 will-change-transform lg:sticky lg:top-32">
               <div>
                 <h2 className="text-4xl md:text-5xl font-semibold tracking-tighter text-white mb-6">The Recruitment <br />Studio</h2>
                 <p className="text-neutral-400 leading-relaxed text-base md:text-lg font-light">
