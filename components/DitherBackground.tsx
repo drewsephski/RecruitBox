@@ -2,8 +2,11 @@ import React, { useEffect, useRef } from 'react';
 
 const DitherBackground: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // Track global mouse position (clientX/Y)
+  const mouseGlobalRef = useRef({ x: 0, y: 0 });
+  // Track interpolated position relative to canvas
   const mouseRef = useRef({ x: 0, y: 0 });
-  const targetRef = useRef({ x: 0, y: 0 });
+  const animationFrameRef = useRef<number>();
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -11,7 +14,6 @@ const DitherBackground: React.FC = () => {
     const ctx = canvas.getContext('2d', { alpha: false }); // Optimization
     if (!ctx) return;
 
-    let animationFrameId: number;
     let resizeTimeout: any;
 
     // Grid configuration
@@ -24,8 +26,8 @@ const DitherBackground: React.FC = () => {
         canvas.width = parent.clientWidth;
         canvas.height = parent.clientHeight;
       }
+      // Reset positions on resize
       mouseRef.current = { x: canvas.width / 2, y: canvas.height / 2 };
-      targetRef.current = { x: canvas.width / 2, y: canvas.height / 2 };
     };
 
     window.addEventListener('resize', () => {
@@ -35,19 +37,25 @@ const DitherBackground: React.FC = () => {
     resize();
 
     const handleMouseMove = (e: MouseEvent) => {
-      const rect = canvas.getBoundingClientRect();
-      targetRef.current = {
-        x: e.clientX - rect.left,
-        y: e.clientY - rect.top
+      mouseGlobalRef.current = {
+        x: e.clientX,
+        y: e.clientY
       };
     };
 
     window.addEventListener('mousemove', handleMouseMove);
 
     const draw = () => {
+      // Get current canvas position (updates on scroll)
+      const rect = canvas.getBoundingClientRect();
+
+      // Calculate target position relative to canvas
+      const targetX = mouseGlobalRef.current.x - rect.left;
+      const targetY = mouseGlobalRef.current.y - rect.top;
+
       // Smooth mouse interpolation
-      mouseRef.current.x += (targetRef.current.x - mouseRef.current.x) * 0.1;
-      mouseRef.current.y += (targetRef.current.y - mouseRef.current.y) * 0.1;
+      mouseRef.current.x += (targetX - mouseRef.current.x) * 0.1;
+      mouseRef.current.y += (targetY - mouseRef.current.y) * 0.1;
 
       // Clear with dark background
       ctx.fillStyle = '#050505';
@@ -96,15 +104,17 @@ const DitherBackground: React.FC = () => {
         }
       }
 
-      animationFrameId = requestAnimationFrame(draw);
+      animationFrameRef.current = requestAnimationFrame(draw);
     };
 
     draw();
 
     return () => {
       window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('resize', resize); // Clean up resize listener
-      cancelAnimationFrame(animationFrameId);
+      window.removeEventListener('resize', resize);
+      if (animationFrameRef.current) {
+        cancelAnimationFrame(animationFrameRef.current);
+      }
     };
   }, []);
 

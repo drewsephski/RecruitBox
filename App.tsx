@@ -126,7 +126,14 @@ const AuthenticatedApp: React.FC = () => {
   };
 
   return (
-    <ReactLenis root options={{ duration: 1.2, smoothWheel: true }}>
+    <ReactLenis root options={{
+      lerp: 0.1,
+      duration: 1.2,
+      smoothWheel: true,
+      wheelMultiplier: 1,
+      touchMultiplier: 2,
+      infinite: false
+    }}>
       <div className="min-h-screen w-full bg-[#050505] text-white font-sans selection:bg-sky-500/30 selection:text-sky-200">
         <div className="bg-noise" />
 
