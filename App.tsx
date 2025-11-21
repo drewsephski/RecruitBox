@@ -86,13 +86,16 @@ const AuthenticatedApp: React.FC = () => {
 
   useEffect(() => {
     let sb: any = null;
+    let mounted = true;
 
     const initScrollbar = async () => {
-      if (!scrollContainerRef.current) return;
+      if (!scrollContainerRef.current || !mounted) return;
 
       try {
         // Try to dynamically import smooth-scrollbar
         const SmoothScrollbar = (await import('smooth-scrollbar')).default;
+
+        if (!mounted || !scrollContainerRef.current) return;
 
         sb = SmoothScrollbar.init(scrollContainerRef.current, {
           damping: 0.08,
@@ -101,28 +104,35 @@ const AuthenticatedApp: React.FC = () => {
           alwaysShowTracks: false,
         });
 
-        setScrollbar(sb);
-        setScrollMode('smooth');
-        console.log('smooth-scrollbar initialized successfully');
+        if (mounted) {
+          setScrollbar(sb);
+          setScrollMode('smooth');
+          console.log('smooth-scrollbar initialized successfully');
+        }
       } catch (error) {
         console.warn('smooth-scrollbar not available, using native scroll:', error);
         // Ensure native scrolling is enabled
-        setScrollbar(null);
-        setScrollMode('native');
+        if (mounted) {
+          setScrollbar(null);
+          setScrollMode('native');
+        }
       }
     };
 
     initScrollbar();
 
     return () => {
+      mounted = false;
       if (sb) {
         try {
           sb.destroy();
-          setScrollMode('native');
         } catch (e) {
           console.warn('Error destroying scrollbar:', e);
         }
       }
+      // Always reset to native mode on cleanup
+      setScrollMode('native');
+      setScrollbar(null);
     };
   }, []);
 
@@ -173,8 +183,10 @@ const AuthenticatedApp: React.FC = () => {
     }
   };
 
-  const isSmoothScrollActive = scrollMode === 'smooth';
-  const rootClassName = `${isSmoothScrollActive ? 'h-screen w-screen overflow-hidden' : 'min-h-screen w-full overflow-x-hidden'} bg-[#050505] text-white font-sans selection:bg-sky-500/30 selection:text-sky-200`;
+  const isSmoothScrollActive = scrollMode === 'smooth' && scrollbar !== null;
+
+  // Always ensure the root allows scrolling unless smooth-scrollbar is actively initialized
+  const rootClassName = `${isSmoothScrollActive ? 'h-screen w-screen overflow-hidden' : 'min-h-screen w-full'} bg-[#050505] text-white font-sans selection:bg-sky-500/30 selection:text-sky-200`;
 
   return (
     <div className={rootClassName}>
@@ -197,8 +209,7 @@ const AuthenticatedApp: React.FC = () => {
         className="relative w-full"
         style={{
           height: isSmoothScrollActive ? '100%' : 'auto',
-          minHeight: isSmoothScrollActive ? undefined : '100vh',
-          overflow: isSmoothScrollActive ? 'hidden' : 'visible'
+          minHeight: isSmoothScrollActive ? undefined : '100vh'
         }}
         id="main-scroll-wrapper"
       >

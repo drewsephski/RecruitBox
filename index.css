@@ -2,8 +2,6 @@
 
 html {
     scroll-behavior: smooth;
-    overflow-x: hidden;
-    overflow-y: auto;
 }
 
 html,
@@ -18,7 +16,6 @@ body {
     background-color: #050505;
     color: #e5e5e5;
     -webkit-font-smoothing: antialiased;
-    overflow-x: hidden;
 }
 
 /* Global Noise Overlay */
