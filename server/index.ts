@@ -46,13 +46,13 @@ app.use('/*', cors({
 let WEBHOOK_SIGNATURE_LOG: string;
 
 if (process.env.NETLIFY) {
-  // In Netlify environment, use /tmp for writeable storage
-  WEBHOOK_SIGNATURE_LOG = '/tmp/webhook-signatures.log';
+    // In Netlify environment, use /tmp for writeable storage
+    WEBHOOK_SIGNATURE_LOG = '/tmp/webhook-signatures.log';
 } else if (import.meta.url) {
-  // In development, use the local file system
-  const __filename = fileURLToPath(import.meta.url);
-  const __dirname = path.dirname(__filename);
-  WEBHOOK_SIGNATURE_LOG = path.join(__dirname, 'webhook-signatures.log');
+    // In development, use the local file system
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = path.dirname(__filename);
+    WEBHOOK_SIGNATURE_LOG = path.join(__dirname, 'webhook-signatures.log');
 } else {
     // Fallback for other environments
     WEBHOOK_SIGNATURE_LOG = '/tmp/webhook-signatures.log';
@@ -352,6 +352,8 @@ app.post('/api/checkout', async (c) => {
             ...checkoutParams,
             products: checkoutParams.products,
             customerEmail: checkoutParams.customerEmail,
+            // Log type of products to ensure it's an array
+            productsType: Array.isArray(checkoutParams.products) ? 'array' : typeof checkoutParams.products
         });
 
         const checkout = await polar.checkouts.create(checkoutParams)
@@ -401,7 +403,10 @@ app.post('/api/webhooks/polar', async (c) => {
     }
 
     const rawBody = await c.req.text()
-    const verifier = new Webhook(Buffer.from(webhookSecret, 'utf8').toString('base64'))
+
+    // Handle whsec_ prefix if present (standard for Polar/StandardWebhooks)
+    const secret = webhookSecret.startsWith('whsec_') ? webhookSecret.slice(6) : webhookSecret
+    const verifier = new Webhook(secret)
 
     try {
         verifier.verify(rawBody, {
@@ -530,10 +535,10 @@ const handleCheckoutUpdatedEvent = async (data: any) => {
     }
 
     if (data.status === 'succeeded') {
-        const subscriptionId = data.subscription?.id
+        const subscriptionId = data.subscription?.id || data.subscription_id
 
         if (!subscriptionId) {
-            console.warn('checkout.updated missing subscription reference')
+            console.warn('checkout.updated missing subscription reference', { data })
             return
         }
 
