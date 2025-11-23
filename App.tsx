@@ -1,5 +1,4 @@
 import React, { useState, useEffect } from 'react';
-import { ReactLenis, useLenis } from 'lenis/react';
 import ChatDrawer from './components/ChatDrawer';
 import FeaturesSection from './components/FeaturesSection';
 import PricingSection from './components/PricingSection';
@@ -82,8 +81,7 @@ const AuthenticatedApp: React.FC = () => {
   const navigate = useNavigate();
   const [showCheckoutSuccess, setShowCheckoutSuccess] = useState(false);
 
-  // Simple Lenis hook for smooth scrolling
-  const lenis = useLenis();
+
 
   useEffect(() => {
     const params = new URLSearchParams(location.search);
@@ -109,63 +107,51 @@ const AuthenticatedApp: React.FC = () => {
     const target = document.querySelector(id) as HTMLElement | null;
     if (!target) return;
 
-    lenis?.scrollTo(target.offsetTop, {
-      duration: 1.2,
-      easing: (t: number) => (t < 0.5 ? 2 * t * t : -1 + (4 - 2 * t) * t),
-    });
+    target.scrollIntoView({ behavior: 'smooth' });
   };
 
   return (
-    <ReactLenis root options={{
-      lerp: 0.1,
-      duration: 1.2,
-      smoothWheel: true,
-      wheelMultiplier: 1,
-      touchMultiplier: 2,
-      infinite: false
-    }}>
-      <div className="min-h-screen w-full bg-[#050505] text-white font-sans selection:bg-sky-500/30 selection:text-sky-200">
-        <div className="bg-noise" />
+    <div className="min-h-screen w-full bg-[#050505] text-white font-sans selection:bg-sky-500/30 selection:text-sky-200">
+      <div className="bg-noise" />
 
-        {/* FIXED ELEMENTS */}
-        <Navbar
-          isPro={isPro}
-          openPaywall={openPaywall}
-          onChatOpen={() => setIsChatOpen(true)}
-          scrollToSection={scrollToSection}
-          openCustomerPortal={openCustomerPortal}
-        />
+      {/* FIXED ELEMENTS */}
+      <Navbar
+        isPro={isPro}
+        openPaywall={openPaywall}
+        onChatOpen={() => setIsChatOpen(true)}
+        scrollToSection={scrollToSection}
+        openCustomerPortal={openCustomerPortal}
+      />
 
-        <ChatDrawer isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
-        <PaywallModal />
+      <ChatDrawer isOpen={isChatOpen} onClose={() => setIsChatOpen(false)} />
+      <PaywallModal />
 
-        {/* SCROLLABLE CONTENT */}
-        <div className="relative w-full">
-          <div className="min-h-screen flex flex-col">
-            {showCheckoutSuccess && <CheckoutSuccessSection onDismiss={dismissSuccess} />}
-            <HeroSection scrollToSection={scrollToSection} />
+      {/* SCROLLABLE CONTENT */}
+      <div className="relative w-full">
+        <div className="min-h-screen flex flex-col">
+          {showCheckoutSuccess && <CheckoutSuccessSection onDismiss={dismissSuccess} />}
+          <HeroSection scrollToSection={scrollToSection} />
 
-            {/* Tool Section - The Product */}
-            <ProductSection />
+          {/* Tool Section - The Product */}
+          <ProductSection />
 
-            <div id="features">
-              <FeaturesSection />
-            </div>
-
-            {/* Demo Section */}
-            <div id="demo">
-              <TransformationDemo />
-            </div>
-
-            <div id="pricing">
-              <PricingSection />
-            </div>
-
-            <Footer />
+          <div id="features">
+            <FeaturesSection />
           </div>
+
+          {/* Demo Section */}
+          <div id="demo">
+            <TransformationDemo />
+          </div>
+
+          <div id="pricing">
+            <PricingSection />
+          </div>
+
+          <Footer />
         </div>
       </div>
-    </ReactLenis>
+    </div>
   );
 };
 

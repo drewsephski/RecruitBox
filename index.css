@@ -9,23 +9,7 @@ body {
     padding: 0;
 }
 
-/* Lenis Recommended Styles */
-html.lenis,
-html.lenis body {
-    height: auto;
-}
 
-.lenis.lenis-smooth {
-    scroll-behavior: auto !important;
-}
-
-.lenis.lenis-stopped {
-    overflow: hidden;
-}
-
-.lenis.lenis-scrolling iframe {
-    pointer-events: none;
-}
 
 body {
     background-color: #050505;

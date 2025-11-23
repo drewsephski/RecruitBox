@@ -1,49 +1,16 @@
-import React, { useRef, useEffect } from 'react';
-import { useLenis } from 'lenis/react';
+import React from 'react';
+
 import RecruitmentSandbox from './RecruitmentSandbox';
 
 const ProductSection: React.FC = () => {
-  const productWrapperRef = useRef<HTMLDivElement>(null);
-  const sidebarRef = useRef<HTMLDivElement>(null);
-
-  // Use Lenis hook for scroll-based animations
-  useLenis(() => {
-    const isDesktop = window.innerWidth >= 1024;
-
-    if (!isDesktop && sidebarRef.current) {
-      sidebarRef.current.style.transform = '';
-      return;
-    }
-
-    if (productWrapperRef.current && sidebarRef.current) {
-      const wrapperRect = productWrapperRef.current.getBoundingClientRect();
-      const sidebarHeight = sidebarRef.current.offsetHeight;
-      const wrapperHeight = wrapperRect.height;
-
-      // Target top position (e.g. 128px from viewport top, approx matching top-32)
-      const stickyTop = 128;
-
-      let y = 0;
-      // If wrapper top is above sticky point (scrolling down), we push sidebar down relative to wrapper
-      if (wrapperRect.top < stickyTop) {
-        y = stickyTop - wrapperRect.top;
-      }
-
-      // Clamp to bottom of wrapper so it doesn't overflow
-      const maxY = wrapperHeight - sidebarHeight;
-      y = Math.min(y, maxY);
-      y = Math.max(y, 0);
-
-      sidebarRef.current.style.transform = `translate3d(0, ${y}px, 0)`;
-    }
-  });
+  // Removed Lenis scroll logic in favor of native sticky positioning
 
   return (
     <section id="product" className="relative z-20 py-20 lg:py-32 bg-[#050505] border-t border-white/5">
       <div className="max-w-screen-2xl mx-auto px-4 md:px-6">
-        <div ref={productWrapperRef} className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-12 lg:gap-20">
           <div className="lg:col-span-4 relative">
-            <div ref={sidebarRef} className="space-y-10 will-change-transform lg:sticky lg:top-32">
+            <div className="space-y-10 will-change-transform lg:sticky lg:top-32">
               <div>
                 <h2 className="text-4xl md:text-5xl font-semibold tracking-tighter text-white mb-6">The Recruitment <br />Studio</h2>
                 <p className="text-neutral-400 leading-relaxed text-base md:text-lg font-light">
