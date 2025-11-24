@@ -21,6 +21,7 @@ const allowedOrigins = [
     'http://localhost:5173',
     'https://recruit-box.vercel.app',
     'https://recruit-box.netlify.app',
+    'https://recruitbox.click',
     process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '',
     process.env.PRODUCTION_URL || '',
 ].filter(Boolean)
