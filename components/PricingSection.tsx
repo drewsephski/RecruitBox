@@ -51,7 +51,7 @@ const PricingCard = ({
             className="w-full"
             onClick={onClick}
         >
-            {buttonText || (highlight ? 'Start Free Trial' : 'Contact Sales')}
+            {buttonText || (highlight ? 'Get Started' : 'Contact Sales')}
         </Button>
     </div>
 );
@@ -100,7 +100,7 @@ const PricingSection = () => {
                                 isPro ? openCustomerPortal() : upgradeToPro('agency');
                             }
                         }}
-                        buttonText={checkoutLoading ? "Processing..." : (isPro ? "Manage Subscription" : "Start Free Trial")}
+                        buttonText={checkoutLoading ? "Processing..." : (isPro ? "Manage Subscription" : "Get Started")}
                         features={[
                             "Unlimited Everything",
                             "Advanced Screening Questions",

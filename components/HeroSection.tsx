@@ -36,7 +36,7 @@ const HeroSection: React.FC<HeroSectionProps> = ({ scrollToSection }) => {
                 </p>
 
                 <div className="flex flex-col sm:flex-row gap-4 items-center animate-slide-up opacity-0 w-full sm:w-auto px-4 sm:px-0" style={{ animationDelay: '0.4s', animationFillMode: 'forwards' }}>
-                    <Button size="lg" onClick={() => scrollToSection('#pricing')} className="h-12 px-8 text-sm font-semibold rounded-full bg-white text-black hover:bg-neutral-200 transition-all hover:scale-[1.02] w-full sm:w-auto">Start Free Trial</Button>
+                    <Button size="lg" onClick={() => scrollToSection('#pricing')} className="h-12 px-8 text-sm font-semibold rounded-full bg-white text-black hover:bg-neutral-200 transition-all hover:scale-[1.02] w-full sm:w-auto">Get Started</Button>
                     <Button variant="ghost" size="lg" onClick={() => scrollToSection('#demo')} className="h-12 px-8 text-sm text-neutral-400 hover:text-white rounded-full transition-all hover:scale-[1.02] w-full sm:w-auto">
                         View Demo
                     </Button>
