@@ -3353,6 +3353,7 @@ var allowedOrigins = [
   "http://localhost:3000",
   "http://localhost:5173",
   "https://recruit-box.vercel.app",
+  "https://recruit-box.netlify.app",
   process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : "",
   process.env.PRODUCTION_URL || ""
 ].filter(Boolean);
@@ -3369,9 +3370,16 @@ app.use("/*", cors({
   allowMethods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
   allowHeaders: ["Content-Type", "Authorization", "webhook-signature", "webhook-id", "webhook-timestamp"]
 }));
-var __filename2 = fileURLToPath(import.meta.url);
-var __dirname2 = path.dirname(__filename2);
-var WEBHOOK_SIGNATURE_LOG = path.join(__dirname2, "webhook-signatures.log");
+var WEBHOOK_SIGNATURE_LOG;
+if (process.env.NETLIFY) {
+  WEBHOOK_SIGNATURE_LOG = "/tmp/webhook-signatures.log";
+} else if (import.meta.url) {
+  const __filename2 = fileURLToPath(import.meta.url);
+  const __dirname2 = path.dirname(__filename2);
+  WEBHOOK_SIGNATURE_LOG = path.join(__dirname2, "webhook-signatures.log");
+} else {
+  WEBHOOK_SIGNATURE_LOG = "/tmp/webhook-signatures.log";
+}
 var PLAN_TIERS = ["starter", "agency"];
 var isPlanTier = (value) => PLAN_TIERS.includes(value);
 var resolvePolarEnvironment = () => process.env.POLAR_ENVIRONMENT === "sandbox" ? "sandbox" : "production";
@@ -3405,7 +3413,7 @@ var resolveRequestOrigin = (c) => {
     return new URL(c.req.url).origin;
   } catch (error) {
     console.warn("[Request] Failed to resolve URL origin, falling back to PRODUCTION_URL", error);
-    return process.env.PRODUCTION_URL || allowedOrigins[0] || "http://localhost:3000";
+    return process.env.PRODUCTION_URL || allowedOrigins[0] || "https://recruit-box.netlify.app";
   }
 };
 app.post("/api/customer-portal/session", async (c) => {
@@ -3579,8 +3587,14 @@ app.post("/api/checkout", async (c) => {
     }, 400);
   }
   try {
-    const origin = c.req.header("origin") || c.req.header("referer")?.split("/").slice(0, 3).join("/") || "http://localhost:3000";
+    const origin = c.req.header("origin") || c.req.header("referer")?.split("/").slice(0, 3).join("/") || process.env.PRODUCTION_URL;
     console.log("[Checkout] Using origin:", origin);
+    console.log("[Checkout Debug] Headers:", {
+      origin: c.req.header("origin"),
+      referer: c.req.header("referer"),
+      productionUrl: process.env.PRODUCTION_URL,
+      finalOrigin: origin
+    });
     const checkoutParams = {
       products: [productId],
       customerEmail: email,
@@ -3599,7 +3613,8 @@ app.post("/api/checkout", async (c) => {
     console.log("[Checkout] Creating checkout with params:", {
       ...checkoutParams,
       products: checkoutParams.products,
-      customerEmail: checkoutParams.customerEmail
+      customerEmail: checkoutParams.customerEmail,
+      productsType: Array.isArray(checkoutParams.products) ? "array" : typeof checkoutParams.products
     });
     const checkout = await polar.checkouts.create(checkoutParams);
     console.log("[Checkout] Successfully created checkout:", {
@@ -3639,7 +3654,8 @@ app.post("/api/webhooks/polar", async (c) => {
     return c.json({ error: "Missing webhook signature headers" }, 400);
   }
   const rawBody = await c.req.text();
-  const verifier = new import_standardwebhooks.Webhook(Buffer.from(webhookSecret, "utf8").toString("base64"));
+  const secret = webhookSecret.startsWith("whsec_") ? webhookSecret.slice(6) : webhookSecret;
+  const verifier = new import_standardwebhooks.Webhook(secret);
   try {
     verifier.verify(rawBody, {
       "webhook-id": webhookIdHeader,
@@ -3745,9 +3761,9 @@ var handleCheckoutUpdatedEvent = async (data) => {
     return;
   }
   if (data.status === "succeeded") {
-    const subscriptionId = data.subscription?.id;
+    const subscriptionId = data.subscription?.id || data.subscription_id;
     if (!subscriptionId) {
-      console.warn("checkout.updated missing subscription reference");
+      console.warn("checkout.updated missing subscription reference", { data });
       return;
     }
     try {
