@@ -42,6 +42,19 @@ const HeroSection: React.FC<HeroSectionProps> = ({ scrollToSection }) => {
                     </Button>
                 </div>
 
+                {/* Product Hunt Badge */}
+                <div className="mt-10 animate-slide-up opacity-0" style={{ animationDelay: '0.5s', animationFillMode: 'forwards' }}>
+                    <a href="https://www.producthunt.com/products/recruitbox?embed=true&utm_source=badge-featured&utm_medium=badge&utm_source=badge-recruitbox" target="_blank" rel="noopener noreferrer">
+                        <img
+                            src="https://api.producthunt.com/widgets/embed-image/v1/featured.svg?post_id=1041855&theme=dark&t=1763996051905"
+                            alt="RecruitBox - Turn messy hiring notes into structured JDs instantly | Product Hunt"
+                            style={{ width: '250px', height: '54px' }}
+                            width="250"
+                            height="54"
+                        />
+                    </a>
+                </div>
+
                 {/* 3D Interface Preview */}
                 <div className="mt-20 md:mt-32 w-full max-w-6xl relative animate-slide-up opacity-0 pointer-events-none px-2 md:px-0" style={{ animationDelay: '0.6s', animationFillMode: 'forwards' }}>
                     <div className="relative aspect-[16/10] w-full group perspective-1000">
