@@ -45,22 +45,22 @@ Add these variables (copy from your `.env` file):
 
 ```bash
 # Database (use production database URL)
-DATABASE_URL=
+DATABASE_URL=""
 
 # Clerk
 VITE_CLERK_PUBLISHABLE_KEY=pk_test_ZW5qb3llZC1tb3VzZS04MC5jbGVyay5hY2NvdW50cy5kZXYk
-CLERK_SECRET_KEY=sk_test_d701Rs6q4H5na1e4VKbP5oOL8ES03JAkdOhTlDjKZt
+CLERK_SECRET_KEY=""
 
 # Polar
-POLAR_ACCESS_TOKEN=polar_oat_fvfDfUTK6KpLgDcqOhdVcrjD7URDO2GsgnKSJ2dQuBx
-POLAR_WEBHOOK_SECRET=polar_whs_WNZeyEiEOdKgBtLeyf1m6EoPq5Wh9ZGCgNC0S1iMze6
+POLAR_ACCESS_TOKEN=""
+POLAR_WEBHOOK_SECRET=""
 POLAR_STARTER_PRODUCT_ID=2563bb04-5461-45dd-b33a-aa56a5626447
 POLAR_STARTER_PRICE_IDS=2563bb04-5461-45dd-b33a-aa56a5626447
 POLAR_AGENCY_PRODUCT_ID=ab65aaa7-2aac-4b9b-b36e-08fa24d638e9
 POLAR_AGENCY_PRICE_IDS=ab65aaa7-2aac-4b9b-b36e-08fa24d638e9
 
 # Gemini
-GEMINI_API_KEY=AIzaSyDktbQ3RUgl7CrSQkn5e_4mk_qPb9ARWS0
+GEMINI_API_KEY=""
 ```
 
 ### 5. Set Up Production Database
@@ -72,7 +72,7 @@ GEMINI_API_KEY=AIzaSyDktbQ3RUgl7CrSQkn5e_4mk_qPb9ARWS0
 4. Run migrations:
    ```bash
    vercel env pull .env.production
-   DATABASE_URL="<your-vercel-postgres-url>" npx prisma migrate deploy
+   DATABASE_URL=""
    ```
 
 **Option B: Supabase**
@@ -81,7 +81,7 @@ GEMINI_API_KEY=AIzaSyDktbQ3RUgl7CrSQkn5e_4mk_qPb9ARWS0
 3. Add to Vercel Environment Variables
 4. Run migrations:
    ```bash
-   DATABASE_URL="<your-supabase-url>" npx prisma migrate deploy
+   DATABASE_URL=""
    ```
 
 ### 6. Deploy to Production
